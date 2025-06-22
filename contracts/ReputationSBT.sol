@@ -47,12 +47,12 @@ contract ReputationSBT is ERC721, Ownable {
 
     // --- Reputation Management (Called by Trusted Contracts) ---
 
-    function increaseReputation(address user, uint256 amount) external {
+    function increaseReputation(address user, uint256 amount) external virtual { // Added virtual
         require(isTrustedContract[msg.sender], "Caller is not a trusted contract");
         reputationScores[user] += amount;
     }
 
-    function decreaseReputation(address user, uint256 amount) external {
+    function decreaseReputation(address user, uint256 amount) external virtual { // Added virtual
         require(isTrustedContract[msg.sender], "Caller is not a trusted contract");
         if (reputationScores[user] >= amount) {
             reputationScores[user] -= amount;

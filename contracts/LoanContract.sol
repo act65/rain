@@ -3,16 +3,18 @@
 pragma solidity ^0.8.0;
 
 import "./CurrencyToken.sol";
-import "./ReputationSBT.sol";
+import "./ReputationSBT.sol"; // Will be replaced by ReputationV2 conceptually
+import "./ReputationV2.sol";
 
 /**
  * @title LoanContract
  * @dev Manages the lifecycle of reputation-staked loans.
+ * Updated to use ReputationV2.
  */
 contract LoanContract {
     // --- State Variables ---
     CurrencyToken public currencyToken;
-    ReputationSBT public reputationSBT;
+    ReputationV2 public reputationContract; // Changed from ReputationSBT to ReputationV2
 
     enum LoanStatus { Pending, Active, Repaid, Defaulted }
 
@@ -40,9 +42,9 @@ contract LoanContract {
     event LoanDefaultClaimed(uint256 loanId);
 
     // --- Constructor ---
-    constructor(address _currencyTokenAddress, address _reputationSBTAddress) {
+    constructor(address _currencyTokenAddress, address _reputationV2Address) { // Changed parameter name
         currencyToken = CurrencyToken(_currencyTokenAddress);
-        reputationSBT = ReputationSBT(_reputationSBTAddress);
+        reputationContract = ReputationV2(_reputationV2Address); // Changed to ReputationV2
     }
 
     // --- Core Functions ---
@@ -54,8 +56,8 @@ contract LoanContract {
     function requestLoan(uint256 _principal, uint256 _interest, uint256 _repaymentPeriod) external {
         uint256 reputationToStake = _principal / 10; // Example: Stake 10% of principal value in reputation points
         
-        // Stake reputation in the SBT contract
-        reputationSBT.stake(msg.sender, reputationToStake);
+        // Stake reputation in the ReputationV2 contract
+        reputationContract.stake(msg.sender, reputationToStake); // Changed reputationSBT to reputationContract
 
         loans[nextLoanId] = Loan({
             id: nextLoanId,
@@ -106,8 +108,10 @@ contract LoanContract {
         loan.status = LoanStatus.Repaid;
 
         // Release the reputation stake and boost reputation
-        reputationSBT.releaseStake(loan.borrower, loan.reputationStake);
-        reputationSBT.increaseReputation(loan.borrower, REPUTATION_BOOST_ON_REPAYMENT);
+        reputationContract.releaseStake(loan.borrower, loan.reputationStake); // Changed reputationSBT to reputationContract
+        // Consider if increaseTransactionScoreV2 should be used instead for more specific tracking.
+        // For now, using the overridden increaseReputation is fine as it updates the main score.
+        reputationContract.increaseReputation(loan.borrower, REPUTATION_BOOST_ON_REPAYMENT); // Changed reputationSBT to reputationContract
 
         emit LoanRepaid(_loanId);
     }
@@ -124,7 +128,9 @@ contract LoanContract {
         loan.status = LoanStatus.Defaulted;
 
         // Slash the borrower's staked reputation
-        reputationSBT.slash(loan.borrower, loan.reputationStake);
+        reputationContract.slash(loan.borrower, loan.reputationStake); // Changed reputationSBT to reputationContract
+        // Consider if decreaseTransactionScoreV2 should be used here.
+        // For now, using slash which directly impacts reputationScore and stakedReputation is appropriate.
 
         emit LoanDefaultClaimed(_loanId);
     }

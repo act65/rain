@@ -3,16 +3,18 @@
 pragma solidity ^0.8.0;
 
 import "./CurrencyToken.sol";
-import "./ReputationSBT.sol";
+import "./ReputationSBT.sol"; // Will be replaced by ReputationV2 conceptually
+import "./ReputationV2.sol";
 
 /**
  * @title InsuranceDAO
  * @dev A DAO for a community insurance pool. Voting power is weighted by reputation.
+ * Updated to use ReputationV2.
  */
 contract InsuranceDAO {
     // --- State Variables ---
     CurrencyToken public currencyToken;
-    ReputationSBT public reputationSBT;
+    ReputationV2 public reputationContract; // Changed from ReputationSBT to ReputationV2
 
     enum ClaimStatus { Pending, Approved, Rejected, Executed }
 
@@ -39,9 +41,9 @@ contract InsuranceDAO {
     event ClaimExecuted(uint256 claimId);
 
     // --- Constructor ---
-    constructor(address _currencyTokenAddress, address _reputationSBTAddress, uint256 _approvalQuorum) {
+    constructor(address _currencyTokenAddress, address _reputationV2Address, uint256 _approvalQuorum) { // Changed parameter name
         currencyToken = CurrencyToken(_currencyTokenAddress);
-        reputationSBT = ReputationSBT(_reputationSBTAddress);
+        reputationContract = ReputationV2(_reputationV2Address); // Changed to ReputationV2
         approvalQuorum = _approvalQuorum;
     }
 
@@ -85,7 +87,8 @@ contract InsuranceDAO {
         require(claim.status == ClaimStatus.Pending, "Claim is not pending");
         require(!hasVoted[_claimId][msg.sender], "Already voted on this claim");
 
-        uint256 voteWeight = reputationSBT.reputationScores(msg.sender);
+        // Using getEffectiveReputation from ReputationV2, which is currently equivalent to reputationScores.
+        uint256 voteWeight = reputationContract.getEffectiveReputation(msg.sender); // Changed reputationSBT.reputationScores to reputationContract.getEffectiveReputation
         require(voteWeight > 0, "Must have reputation to vote");
 
         hasVoted[_claimId][msg.sender] = true;
