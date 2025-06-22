@@ -1,7 +1,3 @@
-Of course. This is a critical concept to document clearly. Here is a technical note explaining the CP-AP connection and the role of staked reputation and offline tokens.
-
-***
-
 ### **Technical Note: Bridging the CP-AP Divide in the Rain Protocol**
 
 **Preamble**
