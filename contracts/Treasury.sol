@@ -2,228 +2,167 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.0;
 
-import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
-import "./ReputationV2.sol"; // To get reputation scores for dividend calculation
-import "./CurrencyToken.sol"; // The type of token for dividends (USDC)
+import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import "@openzeppelin/contracts/utils/cryptography/MerkleProof.sol";
 
 /**
  * @title Treasury
- * @dev Manages system revenues and distributes dividends based on user reputation.
+ * @author Rain Protocol
+ * @dev This contract manages the protocol's funds, collected from ecosystem fees.
+ * It distributes yield generated from these funds back to users as a "Reputation Dividend"
+ * using a gas-efficient and scalable Merkle drop mechanism.
  */
 contract Treasury is Ownable {
-    ReputationV2 public reputationContract;
-    CurrencyToken public usdcToken; // Using CurrencyToken as the dividend token (USDC)
 
-    // Total dividends distributed over time
-    uint256 public totalDividendsDistributed;
+    // --- State Variables ---
 
-    // Placeholder for revenue collection. In a real system, other contracts would send fees here.
-    // For now, the owner can deposit funds to be distributed as dividends.
-
-    // For distributing dividends, iterating through all users with reputation is not scalable on-chain.
-    // Common patterns are:
-    // 1. Pull-based: Users claim their dividends. Requires users to be active.
-    // 2. Snapshot-based with Merkle drops: Off-chain calculation of dividends, root hash on-chain. Users provide proof to claim.
-    // 3. Simplified on-chain for small number of users (not suitable for production).
-
-    // For this version, we'll implement a simplified pull-based system.
-    // Users will "claim" their share of a dividend pool based on their reputation at the time of pool creation.
-    // This requires creating "dividend cycles" or "pools".
+    IERC20 public immutable usdcToken;
+    uint256 public claimPeriodDuration; // The duration for which a dividend cycle is active
 
     struct DividendCycle {
         uint256 id;
-        uint256 totalDividendAmount; // Total USDC in this cycle's pool
-        uint256 totalReputationSnapshot; // Total reputation points eligible at the start of cycle
+        bytes32 merkleRoot;             // The root of the distribution tree for this cycle
+        uint256 totalAmount;            // Total USDC allocated to this cycle's pool
+        uint256 claimedAmount;          // Total USDC claimed from this cycle so far
         uint256 creationTimestamp;
-        uint256 expiryTimestamp; // Optional: after which unclaimed funds might be rolled over
-        mapping(address => uint256) claimedAmountByUser; // How much each user has claimed from this cycle
+        uint256 expiryTimestamp;
+        mapping(address => bool) hasClaimed; // Prevents a user from double-claiming in a cycle
     }
 
     DividendCycle[] public dividendCycles;
-    uint256 public currentDividendCycleId = 0; // Tracks the next ID to use
 
-    // Minimum amount to start a new dividend cycle
-    uint256 public minAmountForNewCycle;
 
-    // Duration for which a dividend cycle is active for claims
-    uint256 public claimPeriodDuration; // e.g., 30 days
+    // --- Events ---
 
-    event RevenueReceived(address indexed from, uint256 amount);
-    event DividendCycleCreated(uint256 indexed cycleId, uint256 totalAmount, uint256 totalReputationSnapshot);
-    event DividendClaimed(uint256 indexed cycleId, address indexed user, uint256 amountClaimed, uint256 userReputation);
+    event DividendCycleCreated(uint256 indexed cycleId, bytes32 indexed merkleRoot, uint256 totalAmount);
+    event DividendClaimed(uint256 indexed cycleId, address indexed user, uint256 amountClaimed);
+    event FundsRecovered(uint256 indexed cycleId, uint256 amountRecovered);
+    event ClaimPeriodUpdated(uint256 newDuration);
+
+
+    // --- Constructor ---
 
     constructor(
-        address _reputationContractAddress,
         address _usdcTokenAddress,
-        uint256 _minAmountForNewCycle,
-        uint256 _claimPeriodDuration
+        uint256 _initialClaimPeriodDuration // e.g., 30 days in seconds
     ) {
-        require(_reputationContractAddress != address(0) && _usdcTokenAddress != address(0), "Contract addresses cannot be zero");
-        require(_minAmountForNewCycle > 0, "Min amount for cycle must be positive");
-        require(_claimPeriodDuration > 0, "Claim period duration must be positive");
+        require(_usdcTokenAddress != address(0), "USDC token address cannot be zero");
+        usdcToken = IERC20(_usdcTokenAddress);
+        claimPeriodDuration = _initialClaimPeriodDuration;
+    }
 
-        reputationContract = ReputationV2(_reputationContractAddress);
-        usdcToken = CurrencyToken(_usdcTokenAddress); // Assuming CurrencyToken is our USDC
-        minAmountForNewCycle = _minAmountForNewCycle;
-        claimPeriodDuration = _claimPeriodDuration;
+
+    // --- Core Dividend Logic ---
+
+    /**
+     * @notice Creates a new dividend cycle for distribution.
+     * @dev Can only be called by the owner (or a trusted keeper bot). The owner is responsible
+     * for calculating the distribution off-chain, generating the Merkle tree, and ensuring
+     * this contract has sufficient USDC balance to cover the total amount.
+     * @param _merkleRoot The root hash of the Merkle tree containing all `(address, amount)` pairs.
+     * @param _totalAmount The total amount of USDC being distributed in this cycle.
+     */
+    function createDividendCycle(bytes32 _merkleRoot, uint256 _totalAmount) external onlyOwner {
+        require(_totalAmount > 0, "Total dividend amount must be positive");
+        require(usdcToken.balanceOf(address(this)) >= _totalAmount, "Insufficient Treasury balance for this cycle");
+
+        uint256 cycleId = dividendCycles.length;
+        dividendCycles.push(DividendCycle({
+            id: cycleId,
+            merkleRoot: _merkleRoot,
+            totalAmount: _totalAmount,
+            claimedAmount: 0,
+            creationTimestamp: block.timestamp,
+            expiryTimestamp: block.timestamp + claimPeriodDuration,
+        }));
+
+        emit DividendCycleCreated(cycleId, _merkleRoot, _totalAmount);
     }
 
     /**
-     * @dev Allows the owner or other system contracts to send revenue (USDC) to the Treasury.
-     * These funds will be used for future dividend cycles.
+     * @notice Allows a user to claim their dividend from a specific, active cycle.
+     * @dev The user must provide a Merkle proof generated off-chain that proves their
+     * inclusion and dividend amount in the cycle's distribution.
+     * @param _cycleId The ID of the dividend cycle to claim from.
+     * @param _amount The amount of the dividend the user is claiming.
+     * @param _merkleProof The proof of inclusion from the Merkle tree.
      */
-    function depositRevenue(uint256 amount) external {
-        // In a real system, this might be `payable` for ETH or require specific contract calls.
-        // For USDC, it's a transfer.
-        require(usdcToken.transferFrom(_msgSender(), address(this), amount), "USDC transfer for revenue failed");
-        emit RevenueReceived(_msgSender(), amount);
-    }
+    function claimDividend(uint256 _cycleId, uint256 _amount, bytes32[] calldata _merkleProof) external {
+        require(_cycleId < dividendCycles.length, "Invalid cycle ID");
+        DividendCycle storage cycle = dividendCycles[_cycleId];
 
-    /**
-     * @dev Creates a new dividend cycle with the current available USDC balance in the Treasury
-     * if it meets the minimum amount.
-     * This function would typically be called periodically by an admin or an automated keeper.
-     * For this version, it takes a snapshot of total reputation from users who have minted SBTs.
-     * This is a simplification as ReputationV2 doesn't explicitly track all token holders for easy iteration.
-     * A more robust system would require ReputationV2 to expose total circulating reputation or use off-chain snapshots.
-     *
-     * For now, let's assume `ReputationV2` has a way to get total reputation (e.g., a public variable `totalSystemReputation`).
-     * This needs to be added to `ReputationV2` or this Treasury needs a list of users.
-     *
-     * Simplification: For now, `totalReputationSnapshot` will be manually provided or use a placeholder.
-     * A better approach for on-chain is for users to register for a dividend cycle.
-     *
-     * Let's make `totalReputationSnapshot` a parameter for now, assuming it's calculated off-chain
-     * or by a system admin who sums up all users' reputations.
-     */
-    function createDividendCycle(uint256 totalReputationSnapshotForCycle) external onlyOwner {
-        // FUTURE WORK: Placeholder - `totalReputationSnapshotForCycle` is provided externally.
-        // A more robust and decentralized system might:
-        // 1. Have ReputationV2 maintain a running total of all active users' reputation scores.
-        // 2. Use an off-chain snapshot mechanism (e.g., taken at a specific block number) where the
-        //    list of users and their reputations is committed on-chain via a Merkle root.
-        //    Claims would then require a Merkle proof.
-        // 3. Implement a registration system where users actively register for a dividend cycle,
-        //    allowing the contract to build the total reputation for that specific cycle.
-        uint256 cycleAmount = usdcToken.balanceOf(address(this));
-
-        require(cycleAmount >= minAmountForNewCycle, "Insufficient balance to start a new cycle meeting minimum");
-        require(totalReputationSnapshotForCycle > 0, "Total reputation snapshot must be positive");
-
-        currentDividendCycleId++;
-        DividendCycle storage newCycle = dividendCycles.push();
-
-        newCycle.id = currentDividendCycleId;
-        newCycle.totalDividendAmount = cycleAmount;
-        newCycle.totalReputationSnapshot = totalReputationSnapshotForCycle; // This is crucial
-        newCycle.creationTimestamp = block.timestamp;
-        newCycle.expiryTimestamp = block.timestamp + claimPeriodDuration;
-        // `claimedAmountByUser` mapping is implicitly initialized.
-
-        // Note: The USDC isn't "moved" here; it's just allocated from the Treasury's balance.
-        // Claims will transfer it out.
-
-        emit DividendCycleCreated(newCycle.id, newCycle.totalDividendAmount, newCycle.totalReputationSnapshot);
-    }
-
-    /**
-     * @dev Allows a user to claim their dividend from a specific, active cycle.
-     * Dividend for user = (UserReputationAtSnapshot / TotalReputationAtSnapshot) * TotalDividendAmountInCycle
-     * User's reputation snapshot would ideally be part of the cycle data or provided via Merkle proof.
-     * For on-chain simplicity here, we fetch current reputation. This is a known simplification/flaw
-     * as reputation can change after cycle creation. A true snapshot system is more complex.
-     *
-     * To improve: `claimDividend` could take `userReputationAtSnapshot` as an argument,
-     * validated by a signature from an oracle or admin if not using Merkle proofs.
-     *
-     * For this implementation, we will use the user's *current* reputation from ReputationV2.
-     * This means users are incentivized to claim when their reputation is high relative to the snapshot total.
-     */
-    function claimDividend(uint256 cycleId) external {
-        require(cycleId > 0 && cycleId <= dividendCycles.length, "Invalid cycle ID");
-        DividendCycle storage cycle = dividendCycles[cycleId - 1]; // Adjust for 0-based array
-
-        require(block.timestamp >= cycle.creationTimestamp, "Cycle not yet active (should not happen)");
         require(block.timestamp <= cycle.expiryTimestamp, "Dividend cycle has expired");
-        require(cycle.totalDividendAmount > 0, "No dividends in this cycle"); // Should be caught by minAmountForNewCycle
+        require(!cycle.hasClaimed[msg.sender], "Dividend already claimed for this cycle");
 
-        address claimant = _msgSender();
-        uint256 alreadyClaimed = cycle.claimedAmountByUser[claimant];
-        require(alreadyClaimed == 0, "Dividend already claimed by user for this cycle");
+        // Verify the claim against the Merkle root stored for this cycle
+        bytes32 leaf = keccak256(abi.encodePacked(msg.sender, _amount));
+        require(MerkleProof.verify(_merkleProof, cycle.merkleRoot, leaf), "Invalid Merkle proof");
 
-        // FUTURE WORK: Placeholder - User's reputation is fetched at the time of claim.
-        // This means a user's dividend amount can change if their reputation changes after a cycle
-        // is created but before they claim. A true snapshot system would use the user's reputation
-        // *at the time the cycle was created/snapshotted*. This would typically involve:
-        // - Storing each user's snapshot reputation (gas-intensive for many users).
-        // - Or, more scalably, requiring users to provide a Merkle proof of their reputation at snapshot time,
-        //   with the Merkle root being part of the DividendCycle data.
-        uint256 userReputation = reputationContract.getEffectiveReputation(claimant);
-        require(userReputation > 0, "User has no reputation, no dividend to claim");
+        // Mark as claimed to prevent double-spending
+        cycle.hasClaimed[msg.sender] = true;
+        cycle.claimedAmount += _amount;
 
-        uint256 dividendAmount = (userReputation * cycle.totalDividendAmount) / cycle.totalReputationSnapshot;
+        // Transfer the funds
+        require(usdcToken.transfer(msg.sender, _amount), "USDC transfer failed");
 
-        require(dividendAmount > 0, "Calculated dividend is zero (e.g., due to low reputation or rounding)");
-
-        // FUTURE WORK: Placeholder - Pool Depletion Risk.
-        // If `totalReputationSnapshotForCycle` is an underestimation or if many users' reputations increase
-        // significantly before they claim, the sum of all potential claims might exceed `cycle.totalDividendAmount`.
-        // A robust system would ensure that `cycle.totalDividendAmount` is precisely allocated or that
-        // claims are pro-rated if the pool is about to be depleted.
-        // The current `usdcToken.balanceOf(address(this)) >= dividendAmount` check offers some protection
-        // but doesn't guarantee fairness for the last claimants if the sum of calculated shares is too high.
-        require(usdcToken.balanceOf(address(this)) >= dividendAmount, "Treasury insufficient balance for this claim");
-
-        cycle.claimedAmountByUser[claimant] = dividendAmount;
-        totalDividendsDistributed += dividendAmount;
-
-        require(usdcToken.transfer(claimant, dividendAmount), "USDC transfer for dividend failed");
-
-        emit DividendClaimed(cycleId, claimant, dividendAmount, userReputation);
+        emit DividendClaimed(_cycleId, msg.sender, _amount);
     }
+
+
+    // --- Admin Functions ---
+
+    /**
+     * @notice Recovers unclaimed funds from an expired dividend cycle.
+     * @dev This allows for capital to be re-allocated to future dividend cycles.
+     * Can only be called by the owner.
+     * @param _cycleId The ID of the expired cycle to recover funds from.
+     */
+    function recoverUnclaimedFunds(uint256 _cycleId) external onlyOwner {
+        require(_cycleId < dividendCycles.length, "Invalid cycle ID");
+        DividendCycle storage cycle = dividendCycles[_cycleId];
+
+        require(block.timestamp > cycle.expiryTimestamp, "Cannot recover funds from an active cycle");
+
+        uint256 unclaimedAmount = cycle.totalAmount - cycle.claimedAmount;
+        
+        if (unclaimedAmount > 0) {
+            // To recover, we simply mark the full totalAmount as "claimed",
+            // which effectively moves the unclaimed funds back into the Treasury's general pool
+            // for the next dividend cycle. No transfer is needed as the funds are already here.
+            cycle.claimedAmount = cycle.totalAmount;
+            emit FundsRecovered(_cycleId, unclaimedAmount);
+        }
+    }
+
+    /**
+     * @notice Updates the duration for which dividend cycles are active.
+     * @param _newDuration The new claim period in seconds.
+     */
+    function setClaimPeriodDuration(uint256 _newDuration) external onlyOwner {
+        require(_newDuration > 0, "Claim period must be positive");
+        claimPeriodDuration = _newDuration;
+        emit ClaimPeriodUpdated(_newDuration);
+    }
+
 
     // --- View Functions ---
 
-    function getDividendCycleDetails(uint256 cycleId) external view returns (
-        uint256 id,
-        uint256 totalAmount,
-        uint256 totalReputationSnap,
-        uint256 created,
-        uint256 expires,
-        uint256 claimedByCaller
-    ) {
-        require(cycleId > 0 && cycleId <= dividendCycles.length, "Invalid cycle ID");
-        DividendCycle storage cycle = dividendCycles[cycleId - 1];
-        return (
-            cycle.id,
-            cycle.totalDividendAmount,
-            cycle.totalReputationSnapshot,
-            cycle.creationTimestamp,
-            cycle.expiryTimestamp,
-            cycle.claimedAmountByUser[_msgSender()]
-        );
+    /**
+     * @notice Gets the details for a specific dividend cycle.
+     * @param _cycleId The ID of the cycle.
+     * @return A memory object with the cycle's details.
+     */
+    function getCycleDetails(uint256 _cycleId) external view returns (DividendCycle memory) {
+        require(_cycleId < dividendCycles.length, "Invalid cycle ID");
+        return dividendCycles[_cycleId];
     }
 
-    function getNumberOfDividendCycles() external view returns (uint256) {
+    /**
+     * @notice Gets the total number of dividend cycles created.
+     * @return The number of cycles.
+     */
+    function getNumberOfCycles() external view returns (uint256) {
         return dividendCycles.length;
     }
-
-    // --- Admin Functions ---
-    function setMinAmountForNewCycle(uint256 _newMinAmount) public onlyOwner {
-        require(_newMinAmount > 0, "Min amount must be positive");
-        minAmountForNewCycle = _newMinAmount;
-    }
-
-    function setClaimPeriodDuration(uint256 _newDuration) public onlyOwner {
-        require(_newDuration > 0, "Claim period duration must be positive");
-        claimPeriodDuration = _newDuration;
-    }
-
-    // In a real scenario, a function to recover funds from expired cycles might be needed.
-    // Or a way for the Treasury to use its own balance for operational costs if designed so.
-    // FUTURE WORK: Implement a function `recoverFundsFromExpiredCycle(uint256 cycleId)`
-    // that allows the owner to move unclaimed USDC from an expired cycle back to the Treasury's
-    // general fund, making it available for future dividend cycles or other Treasury purposes.
-    // This would require tracking how much was actually paid out from a cycle versus its initial totalDividendAmount.
 }

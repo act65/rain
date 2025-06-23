@@ -2,3 +2,5 @@ eth-brownie>=1.19.0,<2.0.0 # Specify a version range for stability
 # Add other Python dependencies here if any are discovered later
 # For example, if test scripts import other libraries.
 # Based on current analysis, only eth-brownie is directly pip installed.
+
+py-merkle-trees
