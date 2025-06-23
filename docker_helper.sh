@@ -18,15 +18,13 @@ build_image() {
 # Function to start Ganache in a detached container
 start_ganache_container() {
     echo "Starting Ganache container: $CONTAINER_NAME..."
-    if [ "$(docker ps -q -f name="^${CONTAINER_NAME}$")" ]; then
-        echo "Container $CONTAINER_NAME is already running. Stopping and removing it."
-        docker stop "$CONTAINER_NAME" > /dev/null
-        docker rm "$CONTAINER_NAME" > /dev/null
-    elif [ "$(docker ps -aq -f status=exited -f name="^${CONTAINER_NAME}$")" ]; then
-        echo "Removing exited container $CONTAINER_NAME."
-        docker rm "$CONTAINER_NAME" > /dev/null
-    fi
+    
+    # More robust cleanup: attempt to stop and remove, ignoring errors if it doesn't exist
+    echo "Ensuring no old container with the name $CONTAINER_NAME exists..."
+    docker stop "$CONTAINER_NAME" > /dev/null 2>&1 || true
+    docker rm "$CONTAINER_NAME" > /dev/null 2>&1 || true
 
+    echo "Creating new container..."
     docker run -d --name "$CONTAINER_NAME" \
         -p "${GANACHE_PORT}:${GANACHE_PORT}" \
         "$IMAGE_NAME" \
