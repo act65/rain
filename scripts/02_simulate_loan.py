@@ -5,7 +5,7 @@ from brownie import (
     chain,
     LoanContract,
     CurrencyToken,
-    ReputationSBT,
+    ReputationV2, # Changed from ReputationSBT
 )
 import json
 import time
@@ -18,7 +18,7 @@ def main():
     """
     # --- 1. SETUP ---
     print("--- LOAN SIMULATION ---")
-    
+
     # Load contract addresses from the file
     with open(DEPLOYMENT_FILE) as f:
         addresses = json.load(f)
@@ -27,7 +27,7 @@ def main():
     # using the addresses from our deployment file.
     loan_contract = LoanContract.at(addresses["LoanContract"])
     currency_token = CurrencyToken.at(addresses["CurrencyToken"])
-    reputation_sbt = ReputationSBT.at(addresses["ReputationSBT"])
+    reputation_v2 = ReputationV2.at(addresses["ReputationV2"]) # Changed variable name and contract type
 
     # Get users
     alice = accounts[1]
@@ -40,13 +40,13 @@ def main():
     print("\n--- Starting Happy Path: Alice borrows from Bob ---")
     principal = 1000
     interest = 50
-    repayment_period_seconds = 60 * 60 * 24 * 30
-    print(f"Initial Reputation - Alice: {reputation_sbt.reputationScores(alice)}")
+    repayment_period_seconds = 60 * 60 * 24 * 30 # 30 days
+    print(f"Initial Reputation - Alice: {reputation_v2.getEffectiveReputation(alice)}") # Changed to getEffectiveReputation
     print(f"Initial Balance - Alice: {currency_token.balanceOf(alice)}, Bob: {currency_token.balanceOf(bob)}")
     print("\nStep A: Alice requests a loan...")
     loan_contract.requestLoan(principal, interest, repayment_period_seconds, {"from": alice})
     loan_id = loan_contract.nextLoanId() - 1
-    print(f"  - Loan {loan_id} requested. Alice's staked reputation: {reputation_sbt.stakedReputation(alice)}")
+    print(f"  - Loan {loan_id} requested. Alice's staked reputation: {reputation_v2.stakedReputation(alice)}") # Changed to reputation_v2
     print("\nStep B: Bob funds the loan...")
     currency_token.approve(loan_contract.address, principal, {"from": bob})
     loan_contract.fundLoan(loan_id, {"from": bob})
@@ -56,19 +56,19 @@ def main():
     loan_contract.repayLoan(loan_id, {"from": alice})
     print("  - Loan repaid.")
     print("\nHappy Path Final State:")
-    print(f"  - Alice's Reputation: {reputation_sbt.reputationScores(alice)}")
-    print(f"  - Alice's Staked Reputation: {reputation_sbt.stakedReputation(alice)}")
+    print(f"  - Alice's Reputation: {reputation_v2.getEffectiveReputation(alice)}") # Changed to getEffectiveReputation
+    print(f"  - Alice's Staked Reputation: {reputation_v2.stakedReputation(alice)}") # Changed to reputation_v2
     print(f"  - Alice's Balance: {currency_token.balanceOf(alice)}")
     print(f"  - Bob's Balance: {currency_token.balanceOf(bob)}")
     print(f"  - Loan {loan_id} Status: {loan_contract.loans(loan_id)[7]}")
 
     # --- 3. UNHAPPY PATH SIMULATION ---
     print("\n\n--- Starting Unhappy Path: Charlie borrows from Bob and defaults ---")
-    print(f"Initial Reputation - Charlie: {reputation_sbt.reputationScores(charlie)}")
+    print(f"Initial Reputation - Charlie: {reputation_v2.getEffectiveReputation(charlie)}") # Changed to getEffectiveReputation
     print("\nStep A: Charlie requests a loan...")
     loan_contract.requestLoan(principal, interest, repayment_period_seconds, {"from": charlie})
     default_loan_id = loan_contract.nextLoanId() - 1
-    print(f"  - Loan {default_loan_id} requested. Charlie's staked reputation: {reputation_sbt.stakedReputation(charlie)}")
+    print(f"  - Loan {default_loan_id} requested. Charlie's staked reputation: {reputation_v2.stakedReputation(charlie)}") # Changed to reputation_v2
     print("\nStep B: Bob funds the loan...")
     currency_token.approve(loan_contract.address, principal, {"from": bob})
     loan_contract.fundLoan(default_loan_id, {"from": bob})
@@ -81,6 +81,6 @@ def main():
     loan_contract.claimDefault(default_loan_id, {"from": bob})
     print("  - Default claimed.")
     print("\nUnhappy Path Final State:")
-    print(f"  - Charlie's Reputation: {reputation_sbt.reputationScores(charlie)}")
-    print(f"  - Charlie's Staked Reputation: {reputation_sbt.stakedReputation(charlie)}")
+    print(f"  - Charlie's Reputation: {reputation_v2.getEffectiveReputation(charlie)}") # Changed to getEffectiveReputation
+    print(f"  - Charlie's Staked Reputation: {reputation_v2.stakedReputation(charlie)}") # Changed to reputation_v2
     print(f"  - Loan {default_loan_id} Status: {loan_contract.loans(default_loan_id)[7]}")

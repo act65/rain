@@ -109,7 +109,10 @@ contract OfflineToken is ERC1155, Ownable {
      * @param reputationToSlash The amount of reputation to slash.
      */
     function slashStake(address user, uint256 reputationToSlash) external {
-        require(msg.sender == juryContractAddress || msg.sender == owner(), "Caller not authorized to slash stake");
+        require(
+            msg.sender == juryContractAddress || (juryContractAddress == address(0) && msg.sender == owner()),
+            "Caller not authorized to slash stake"
+        );
         require(stakedReputationByUser[user] >= reputationToSlash, "Cannot slash more reputation than staked");
 
         // Slash reputation in ReputationV2 contract first

@@ -299,7 +299,7 @@ contract ReputationV2 is ReputationSBT {
      * @dev Increases reputation. This can be called by trusted contracts for general positive adjustments.
      * It's separate from specific transaction-driven score changes but contributes to the same reputation score.
      */
-    function increaseReputation(address user, uint256 amount) external override {
+    function increaseReputation(address user, uint256 amount) public override { // Changed to public
         require(isTrustedContract[msg.sender], "Caller is not a trusted contract");
         uint256 oldReputation = reputationScores[user];
         super.increaseReputation(user, amount); // Calls ReputationSBT's implementation
@@ -310,7 +310,7 @@ contract ReputationV2 is ReputationSBT {
      * @dev Decreases reputation. This can be called by trusted contracts for general negative adjustments.
      * It's separate from specific transaction-driven score changes but contributes to the same reputation score.
      */
-    function decreaseReputation(address user, uint256 amount) external override {
+    function decreaseReputation(address user, uint256 amount) public override { // Changed to public
         require(isTrustedContract[msg.sender], "Caller is not a trusted contract");
         uint256 oldReputation = reputationScores[user];
         super.decreaseReputation(user, amount); // Calls ReputationSBT's implementation

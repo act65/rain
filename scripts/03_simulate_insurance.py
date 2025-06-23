@@ -4,7 +4,7 @@ from brownie import (
     accounts,
     InsuranceDAO,
     CurrencyToken,
-    ReputationSBT,
+    ReputationV2, # Changed from ReputationSBT
 )
 import json
 
@@ -21,7 +21,7 @@ def main():
 
     insurance_dao = InsuranceDAO.at(addresses["InsuranceDAO"])
     currency_token = CurrencyToken.at(addresses["CurrencyToken"])
-    reputation_sbt = ReputationSBT.at(addresses["ReputationSBT"])
+    reputation_v2 = ReputationV2.at(addresses["ReputationV2"]) # Changed variable name and contract type
 
     # Get users
     alice = accounts[1]
@@ -32,9 +32,9 @@ def main():
     
     # --- 2. POOL CONTRIBUTION ---
     print("\n--- Step 1: Users contribute to the insurance pool ---")
-    alice_rep = reputation_sbt.reputationScores(alice)
-    bob_rep = reputation_sbt.reputationScores(bob)
-    charlie_rep = reputation_sbt.reputationScores(charlie)
+    alice_rep = reputation_v2.getEffectiveReputation(alice) # Changed to reputation_v2 and getEffectiveReputation
+    bob_rep = reputation_v2.getEffectiveReputation(bob) # Changed to reputation_v2 and getEffectiveReputation
+    charlie_rep = reputation_v2.getEffectiveReputation(charlie) # Changed to reputation_v2 and getEffectiveReputation
     print(f"Reputation Scores -> Alice: {alice_rep}, Bob: {bob_rep}, Charlie: {charlie_rep}")
     contribution_amount = 500
     for user in [alice, bob, charlie]:
