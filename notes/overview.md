@@ -1,58 +1,70 @@
-### **Rain: A Reputation-Based Economy for a Connected and Disconnected World**
+### **The Rain Protocol: A Unified Architectural Overview**
 
-#### **1. Vision & Core Principle**
+#### **Abstract**
 
-Rain's vision is to create a resilient, decentralized, and self-governing digital economy for communities where internet access is unreliable or unavailable.
+Rain Protocol is a decentralized digital economy designed to function in both connected and disconnected environments. Its architecture is a layered stack that separates concerns, from decentralized identity at its base to user-facing applications at its peak. This document provides a concise overview of this architecture, detailing the roles of its core smart contracts, the function of its native tokens, and how the layers work in concert to create a secure, self-sustaining, and reputation-based financial ecosystem.
 
-The system is designed to solve the fundamental challenge of digital transactions in a disconnected environment. In an offline-first (Partition-Tolerant) world, it is technically impossible to prevent fraud like a double-spend at the moment of a transaction.
+---
 
-Therefore, Rain's core principle is to shift security from **technical prevention** to **economic incentive**. We cannot stop a bad actor from attempting fraud, but we can make it a catastrophically irrational decision. Rain achieves this through a novel, two-pronged approach: a detailed **online reputation score** for the connected world, and a simple, verifiable **offline reputation token** for when connectivity is a luxury.
+#### **Layer 0: Decentralized Identity & Trust Root**
 
-#### **2. System Architecture: A Layered Approach**
+This is the foundational layer that establishes who can participate in the economy. It is built on the principle of costly, non-transferable identity to prevent Sybil attacks.
 
-Rain is built on four distinct layers, each serving a specific purpose.
+*   **Implementation:** The `RainReputation.sol` contract.
+*   **Identity Primitive:** Each user is issued a non-transferable ERC721 token, or **Soulbound Token (SBT)**. This token acts as a permanent, foundational digital identity within the ecosystem. It is earned, not bought or traded.
+*   **Sybil Resistance:** New users are onboarded through a **"Web of Trust"** governance process. A new user must be sponsored by existing members who co-stake a financial bond. This "skin-in-the-game" mechanism ensures sponsors are held accountable and makes the creation of fake identities prohibitively expensive.
 
-*   **Layer 0: Decentralized Identity (DID)**
-    *   **Implementation:** A user's identity is a private key, managed by their device's secure element. For now, users are responsible for their own key backup (e.g., via seed phrase).
-    *   **Sybil Resistance:** New users are onboarded through a "Web of Trust," requiring a **co-staked reputation bond** from sponsors. This "skin-in-the-game" mechanism ensures sponsors are held accountable for the users they vouch for.
-    *   **Technical Standard:** Identity and reputation are anchored to a non-transferable **Soulbound Token (SBT)**, creating a permanent, foundational identity.
+---
 
-*   **Layer 1: The Settlement Layer**
-    *   **Implementation:** A low-cost, high-throughput blockchain (e.g., an Ethereum L2) that serves as the ultimate, immutable source of truth for all transactions and reputation scores.
-    *   **Unit of Account:** A trusted, fiat-backed stablecoin (e.g., USDC).
+#### **Layer 1: The Settlement Layer**
 
-*   **Layer 2: The Agreement Layer (Smart Contracts)**
-    *   **Implementation:** A suite of smart contracts that function as the system's **impartial arbiter**, automatically enforcing the rules of the economy.
-    *   **Key Contracts:**
-        1.  **Reputation Contract:** Calculates and updates a user's reputation score, utilizing a network-aware algorithm inspired by **EigenTrust** to resist collusion and circular transaction attacks.
-        2.  **Staking & Token Contract:** The engine of trust. This contract allows users to stake their online reputation score as collateral to mint **Offline Transaction Tokens**, secure loans, or act as escrow for commerce. It automatically slashes staked reputation in cases of proven fraud or default.
-        3.  **Jury Contract:** Manages a decentralized justice system where jurors must **stake collateral to participate**. Jurors are rewarded for voting with the majority and slashed for being in the minority, creating a powerful incentive for honest adjudication.
-        4.  **Treasury & Dividend Contract:** Holds system capital, earns yield from a diversified portfolio of secure protocols, and distributes it as a **Reputation Dividend** to users, giving the online score tangible, long-term value.
+This is the underlying blockchain that serves as the ultimate, immutable source of truth for all transactions and asset ownership.
 
-*   **Layer 3: The Application Layer (User-Facing App)**
-    *   **Implementation:** An offline-first mobile application.
-    *   **Features:**
-        *   **Online Mode:** Functions as a standard crypto wallet, showing the user's full reputation score and transaction history.
-        *   **Offline Transactions:** Uses QR codes to present and verify single-use Offline Transaction Tokens. The recipient's app only needs to validate the token's cryptographic signature.
-        *   **"Sneakernet" Syncing:** Operates on a **dynamic fee market**. Users attach a small fee to their offline transactions, and syncing agents are incentivized to prioritize and settle the most profitable batches first, ensuring efficient and timely settlement.
+*   **Implementation:** A low-cost, high-throughput blockchain (e.g., an Ethereum L2 like Arbitrum or Polygon).
+*   **Unit of Account:** All economic activity is denominated in a trusted, fiat-backed stablecoin (e.g., USDC), represented by the `CurrencyToken.sol` contract within the protocol.
 
-#### **3. Key Mechanisms: The Dual Function of Reputation**
+---
 
-Rain's utility is built on two core functions of its hybrid reputation system.
+#### **Layer 2: The Agreement Layer (The Protocol Core)**
 
-**A. Reputation as a Valuable Asset (The Online Score)**
+This is the heart of the protocol, where the rules of the economy are defined and autonomously enforced by a suite of interconnected smart contracts. This layer follows the **Arbiter-Ledger** security model.
 
-The online reputation score is a user's long-term measure of trustworthiness. Its value is driven by the **Reputation Dividend**. A higher score earns a user a larger, continuous stream of passive income from the system's treasury. A proven double-spend or major default results in the score being slashed to zero, permanently cutting the user off from this income and all other economic participation. This makes a user's reputation an asset they are highly motivated to protect.
+*   **The Ledger (`RainReputation.sol`):** This is the unified core engine of the entire system. Its responsibilities are:
+    1.  **Identity Management:** Minting the SBTs that anchor Layer 0.
+    2.  **Reputation Scoring:** Maintaining the authoritative reputation score for every user.
+    3.  **Economic Gateway:** Serving as the universal gateway for protocol revenue via its `authorizeAction()` function, which charges a fee for instantaneous, reputation-gated services.
+    4.  **Collateral Management:** Managing the `stake()` and `slash()` functions for users committing their reputation as long-term collateral.
 
-**B. Reputation as Stakable Collateral (The Engine of Trust)**
+*   **The Economic Engine (`TreasuryV2.sol`):** This contract is the protocol's autonomous economic heart. Its responsibilities are:
+    1.  **Fee Aggregation:** Acting as the central collection point for all protocol fees generated by `RainReputation.authorizeAction()`.
+    2.  **Dividend Distribution:** Investing its capital to generate yield and distributing this yield back to users as a Reputation Dividend, using a scalable and secure Merkle drop mechanism.
 
-This is the mechanism that converts long-term reputation into immediate, verifiable trust for specific interactions, both online and off. In all cases, a valuable, long-term asset (the online score) is used as collateral to guarantee a short-term promise.
+*   **The Arbiters (e.g., `LoanContract.sol`, `JuryContract.sol`):** This is a suite of specialized, trusted smart contracts that contain the context-specific business logic of the ecosystem. They are the only contracts permitted to command the Ledger. Each Arbiter is an expert in its domain (e.g., credit, dispute resolution) and is responsible for judging outcomes and instructing the `RainReputation` contract to increase or decrease scores accordingly. Every Arbiter must pass a rigorous governance audit to become trusted.
 
-*   **Use Case 1: Offline Transactions (The Token System)**
-    *   **Flow:** A user with a high online score stakes a portion of it. The Staking Contract issues a signed, single-use Offline Transaction Token. The user presents this token to a merchant offline. The merchant's app verifies the signature and accepts the payment with confidence. The token is redeemed and settled during the next "Sneakernet" sync.
+---
 
-*   **Use Case 2: Decentralized Loans**
-    *   **Flow:** A borrower stakes their reputation to secure a loan from a lender. This stake acts as collateral, which is slashed upon default, protecting the lender.
+#### **Layer 3: The Application Layer**
 
-*   **Use Case 3: Commercial Escrow**
-    *   **Flow:** A seller stakes reputation as a guarantee of product quality. The stake is frozen until the buyer confirms satisfaction, creating a self-policing marketplace.
+This is the user-facing layer, consisting of applications that interact with the Layer 2 contracts to provide services to the end-user.
+
+*   **Implementation:** An offline-first mobile application.
+*   **Features:**
+    *   **Online Mode:** Functions as a standard crypto wallet, displaying the user's reputation score, transaction history, and allowing interaction with online services like the `LoanContract`.
+    *   **Offline Mode:** Uses the `authorizeAction()` function from the `RainReputation` contract to mint single-use offline transaction tokens, presented as QR codes for peer-to-peer commerce.
+    *   **"Sneakernet" Syncing:** A dynamic fee market where agents are incentivized to batch and settle offline transactions to the Layer 1 blockchain, ensuring eventual consistency.
+
+---
+
+#### **Tokens of the Ecosystem**
+
+The Rain economy is powered by two core tokens:
+
+1.  **RAIN (Reputation SBT):**
+    *   **Type:** Non-transferable ERC721 (Soulbound Token).
+    *   **Function:** Represents a user's identity and is the anchor for their reputation score.
+    *   **Acquisition:** It cannot be bought or sold. It is granted upon successful entry into the ecosystem and its value (the score) is earned through trustworthy behavior.
+
+2.  **DMD (Demo Dollar - representing USDC):**
+    *   **Type:** Standard ERC20.
+    *   **Function:** The stable unit of account for the entire economy. It is used for all economic transactions, including loan principals, fee payments (`actionFee`), and the distribution of Reputation Dividends.
+    *   **Acquisition:** Acquired on the open market, like any standard stablecoin.

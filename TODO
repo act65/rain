@@ -4,3 +4,5 @@
 - move Stablecoin choice to being a hparam instead of hardcoded to USDC
 - is the current way reputation is calculate enough to avoid circular trading issues? (manipulating your reputation?) (tho the fee kinda solves this issue right?)
 - double check that 
+- should authorizeAction use available reputation or true reputation?
+- could change dividends to be propto available reputation?
