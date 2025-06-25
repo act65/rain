@@ -9,3 +9,5 @@
 - Add conditionaltransfer, conditionalpromise, ... to support options (these would make our system economically 'complete'?)
 - how are delayed bandits related to promises?
 - move core code utils from py scripts into a python lib.
+- should allow contracts to build on each other? if X then use contract A, if Y then use contract B? (this is control flow?!)
+- support multi-party contracts!?
