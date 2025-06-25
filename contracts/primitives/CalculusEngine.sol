@@ -1,4 +1,4 @@
-// File: contracts/CalculusEngine.sol (Revised for Atomic Actions)
+// File: contracts/primitives/CalculusEngine.sol (Revised for Atomic Actions & NFT Transfers)
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.0;
 
@@ -6,6 +6,11 @@ import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/access/AccessControl.sol";
 import "@openzeppelin/contracts/utils/Counters.sol";
 import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
+
+// --- NEW: Interface for ERC721 transfer ---
+interface IERC721 {
+    function transferFrom(address from, address to, uint256 tokenId) external;
+}
 
 /**
  * @title CalculusEngine
@@ -128,6 +133,31 @@ contract CalculusEngine is AccessControl, ReentrancyGuard {
         IERC20(asset).transferFrom(from, to, amount);
 
         emit ValueTransferred(actionId, asset, from, to, amount);
+    }
+
+    /**
+     * @notice Transfers a specific non-fungible token (ERC721) within a monitored action.
+     * @dev This is the primitive used for trading assets like Reputation Claim Tokens (RCTs).
+     * @param actionId The ID of the fee-paid session.
+     * @param asset The address of the ERC721 contract.
+     * @param from The current owner of the NFT.
+     * @param to The new owner of the NFT.
+     * @param tokenId The specific ID of the token to transfer.
+     */
+    function monitoredNftTransfer(
+        uint256 actionId,
+        address asset,
+        address from,
+        address to,
+        uint256 tokenId
+    ) external nonReentrant {
+        require(hasRole(SESSION_CREATOR_ROLE, msg.sender), "CalculusEngine: Caller is not a session creator");
+        require(actions[actionId].script == msg.sender, "CalculusEngine: Caller is not the original script for this action");
+        
+        IERC721(asset).transferFrom(from, to, tokenId);
+
+        // For NFTs, the "amount" is conceptually 1, representing the single token.
+        emit ValueTransferred(actionId, asset, from, to, 1);
     }
 
     function monitoredFulfillment(uint256 promiseId) external nonReentrant {

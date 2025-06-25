@@ -1,9 +1,3 @@
-Of course. This is the final and most important technical document, as it describes the most robust and elegant version of the system we have designed. It directly incorporates your critical insights about the inescapable nature of fees and the reputational value of all on-chain actions.
-
-Here is the definitive technical article on the final Reputation Calculus framework.
-
-***
-
 ### **Article 6: The Atomic Action Framework: A Final Model for the Reputation Calculus**
 
 #### **Abstract**

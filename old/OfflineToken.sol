@@ -1,11 +1,11 @@
-// File: contracts/OfflineToken.sol
+// File: contracts/token/OfflineToken.sol
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.0;
 
 import "@openzeppelin/contracts/token/ERC1155/ERC1155.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/utils/Context.sol";
-import "./ReputationV2.sol"; // Using ReputationV2 for staking
+import "./RainReputation.sol"; // Using Reputation for staking
 
 /**
  * @title OfflineToken
@@ -13,7 +13,7 @@ import "./ReputationV2.sol"; // Using ReputationV2 for staking
  * Allows slashing of staked reputation by trusted authorities.
  */
 contract OfflineToken is ERC1155, Ownable {
-    ReputationV2 public reputationContract;
+    RainReputation public reputationContract;
 
     // Define a specific ID for the Offline Tokens within the ERC1155 contract
     uint256 public constant OFFLINE_TOKEN_ID = 0;
@@ -41,7 +41,7 @@ contract OfflineToken is ERC1155, Ownable {
 
     constructor(address _reputationContractAddress) ERC1155("") { // URI can be set later if needed
         require(_reputationContractAddress != address(0), "Reputation contract address cannot be zero");
-        reputationContract = ReputationV2(_reputationContractAddress);
+        reputationContract = RainReputation(_reputationContractAddress);
     }
 
     /**

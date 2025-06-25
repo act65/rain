@@ -1,4 +1,4 @@
-// File: contracts/ReputationClaimToken.sol (Final, Secure Version)
+// File: contracts/token/ReputationClaimToken.sol (Final, Secure Version)
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.0;
 
