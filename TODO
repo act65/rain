@@ -3,3 +3,5 @@
 - understand tradeoffs of on/off chain for the calculation of reputation
 - move Stablecoin choice to being a hparam instead of hardcoded to USDC
 - could change dividends to be propto available reputation?
+- need to be cautious with the reputation for value delta. a can send you $100 USD on rain, but then in cash ask for the 100 back. maybe only use promises.
+- generalise offline token. more of a 'proof reputation is staked' token? maybe make a 1-1 exchange? then to stake, you buy this token with your reputation?
