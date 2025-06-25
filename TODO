@@ -8,3 +8,4 @@
 - generalise the offline token? Make it more of a 'proof reputation is staked' token? With say a 1-1 exchange? Then to stake, you buy this token with your reputation?
 - Add conditionaltransfer, conditionalpromise, ... to support options (these would make our system economically 'complete'?)
 - how are delayed bandits related to promises?
+- move core code utils from py scripts into a python lib.

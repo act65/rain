@@ -1,4 +1,4 @@
-// File: contracts/primitives/TreasuryV2.sol (Upgraded)
+// File: contracts/primitives/Treasury.sol
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.0;
 
@@ -20,13 +20,13 @@ interface IYieldSource {
 
 
 /**
- * @title TreasuryV2
+ * @title Treasury
  * @author Rain Protocol
  * @dev This contract is the economic engine of the protocol. It collects fees,
  * invests them in whitelisted, yield-bearing protocols, and distributes the
  * generated yield back to users as a "Reputation Dividend" via Merkle drops.
  */
-contract TreasuryV2 is AccessControl, ReentrancyGuard {
+contract Treasury is AccessControl, ReentrancyGuard {
 
     // --- Roles ---
     bytes32 public constant MANAGER_ROLE = keccak256("MANAGER_ROLE");
