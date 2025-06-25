@@ -1,4 +1,4 @@
-// File: contracts/ReputationClaimToken.sol
+// File: contracts/ReputationClaimToken.sol (Final, Secure Version)
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.0;
 
@@ -6,53 +6,50 @@ import "@openzeppelin/contracts/token/ERC721/ERC721.sol";
 import "@openzeppelin/contracts/access/AccessControl.sol";
 import "@openzeppelin/contracts/utils/Counters.sol";
 
+// Interface for the RainReputation contract
+interface IRainReputation {
+    function setDelinquentStatus(address user, bool status) external;
+}
+
 /**
  * @title ReputationClaimToken
  * @author Rain Protocol
- * @dev An ERC721 token where each token represents a unique, verifiable claim on a debt
- * from a defaulted loan. This token securitizes the debt, making it a tradable asset.
+ * @dev An ERC721 token representing a debt claim. This contract is now also responsible
+ * for triggering the "Hard Lock" on the RainReputation contract when a user's
+ * outstanding debt count changes from 0 to 1 (on mint) or 1 to 0 (on burn).
  */
 contract ReputationClaimToken is ERC721, AccessControl {
     using Counters for Counters.Counter;
     Counters.Counter private _tokenIds;
 
-    // Roles for controlling minting and burning
     bytes32 public constant MINTER_ROLE = keccak256("MINTER_ROLE");
     bytes32 public constant BURNER_ROLE = keccak256("BURNER_ROLE");
 
-    // Struct to hold the details of each debt claim
+    IRainReputation public immutable rainReputation;
+
+    // --- NEW: State variable to track outstanding debts per user ---
+    mapping(address => uint256) public debtCount;
+
     struct DebtClaim {
         address defaulterAddress;
         address originalLenderAddress;
-        uint256 shortfallAmount; // In USDC smallest unit
+        uint256 shortfallAmount;
         uint256 defaultTimestamp;
-        address loanContractAddress; // The Arbiter that witnessed the default
+        address loanContractAddress;
     }
-
-    // Mapping from a token ID to its associated debt details
     mapping(uint256 => DebtClaim) public claims;
 
-    event ClaimMinted(
-        uint256 indexed tokenId,
-        address indexed defaulter,
-        address indexed originalLender,
-        uint256 shortfallAmount
-    );
-
+    event ClaimMinted(uint256 indexed tokenId, address indexed defaulter, address indexed originalLender, uint256 shortfallAmount);
     event ClaimBurned(uint256 indexed tokenId, address indexed burner);
 
-    constructor() ERC721("Rain Reputation Claim", "RCT") {
-        // Grant the contract deployer the default admin role, which can grant other roles
+    constructor(address _rainReputationAddress) ERC721("Rain Reputation Claim", "RCT") {
         _grantRole(DEFAULT_ADMIN_ROLE, msg.sender);
+        rainReputation = IRainReputation(_rainReputationAddress);
     }
 
     /**
-     * @notice Mints a new Reputation Claim Token.
-     * @dev Can only be called by a trusted contract with MINTER_ROLE (e.g., a LoanContract).
-     * The token is assigned to the original lender.
-     * @param defaulter The address of the user who defaulted.
-     * @param originalLender The address of the lender who is owed the debt.
-     * @param shortfallAmount The amount of the debt in USDC smallest unit.
+     * @notice Mints a new RCT. If this is the user's first outstanding debt,
+     * it atomically sets their status to delinquent.
      */
     function mint(
         address defaulter,
@@ -61,6 +58,12 @@ contract ReputationClaimToken is ERC721, AccessControl {
         address loanContract
     ) external returns (uint256) {
         require(hasRole(MINTER_ROLE, msg.sender), "RCT: Caller is not a minter");
+
+        // --- REVISED LOGIC: Lock on first offense ---
+        if (debtCount[defaulter] == 0) {
+            rainReputation.setDelinquentStatus(defaulter, true);
+        }
+        debtCount[defaulter]++;
 
         _tokenIds.increment();
         uint256 newItemId = _tokenIds.current();
@@ -74,30 +77,32 @@ contract ReputationClaimToken is ERC721, AccessControl {
         });
 
         _safeMint(originalLender, newItemId);
-
         emit ClaimMinted(newItemId, defaulter, originalLender, shortfallAmount);
         return newItemId;
     }
 
     /**
-     * @notice Burns a token after the debt has been settled.
-     * @dev Can only be called by a trusted contract with BURNER_ROLE (e.g., the InsuranceFund
-     * or a future repayment contract).
-     * @param tokenId The ID of the token to burn.
+     * @notice Burns an RCT. If this is the user's last outstanding debt,
+     * it atomically clears their delinquent status.
      */
     function burn(uint256 tokenId) external {
         require(hasRole(BURNER_ROLE, msg.sender), "RCT: Caller is not a burner");
         
-        // Clear the associated claim data to save gas (refund)
+        address defaulter = claims[tokenId].defaulterAddress;
+        require(debtCount[defaulter] > 0, "Cannot decrement debt count below zero");
+        
         delete claims[tokenId];
         _burn(tokenId);
+
+        // --- REVISED LOGIC: Unlock when debt count reaches zero ---
+        debtCount[defaulter]--;
+        if (debtCount[defaulter] == 0) {
+            rainReputation.setDelinquentStatus(defaulter, false);
+        }
 
         emit ClaimBurned(tokenId, msg.sender);
     }
 
-    /**
-     * @dev Required override for OpenZeppelin's AccessControl contract.
-     */
     function supportsInterface(bytes4 interfaceId) public view virtual override(ERC721, AccessControl) returns (bool) {
         return super.supportsInterface(interfaceId);
     }
