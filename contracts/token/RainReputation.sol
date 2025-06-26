@@ -1,4 +1,4 @@
-// File: contracts/token/RainReputation.sol (Final Version)
+// File: contracts/token/RainReputation.sol (Final Version, Updated with Total Reputation Tracking)
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.0;
 
@@ -10,18 +10,8 @@ import "@openzeppelin/contracts/utils/Counters.sol";
  * @title RainReputation
  * @author Rain Protocol
  * @dev The unified, definitive reputation contract. It acts as both the universal
- * Reputation Ledger and the stateful Staking Vault.
- *
- * ARCHITECTURAL NOTE: This contract has been updated for the Atomic Action Framework.
- * The responsibility for gating actions has shifted.
- * 1. Staking (`stake`, `releaseStake`) is now permissionless. Any contract can call these
- *    functions. Security is no longer based on *who* calls the function, but on the
- *    verifiable economic context created by the CalculusEngine and the logic of the
- *    calling script.
- * 2. Reputation modification (`increaseReputation`, `decreaseReputation`, `slash`) is
- *    a destructive and privileged action. It is gated by an `UPDATER_ROLE`, which
- *    is granted exclusively to the trusted ReputationUpdater contract that acts on
- *    behalf of the off-chain oracle.
+ * Reputation Ledger and the stateful Staking Vault. It now also tracks the total
+ * amount of reputation in the system to facilitate dynamic fee calculations.
  */
 contract RainReputation is ERC721, AccessControl {
     using Counters for Counters.Counter;
@@ -34,6 +24,9 @@ contract RainReputation is ERC721, AccessControl {
     mapping(address => uint256) public reputationScores;
     mapping(address => uint256) public stakedReputation; // Total amount staked by a user
     mapping(address => bool) public isDelinquent;
+
+    // --- NEW: Total reputation tracking for protocol-wide calculations ---
+    uint256 public totalReputation;
 
     address public rctContractAddress;
 
@@ -65,6 +58,9 @@ contract RainReputation is ERC721, AccessControl {
         uint256 newItemId = _tokenIds.current();
         _safeMint(user, newItemId);
         reputationScores[user] = initialReputation;
+        
+        // --- MODIFIED: Update total reputation ---
+        totalReputation += initialReputation;
     }
 
     function _beforeTokenTransfer(address from, address to, uint256 tokenId, uint256 batchSize) internal override {
@@ -79,46 +75,63 @@ contract RainReputation is ERC721, AccessControl {
         require(!isDelinquent[user], "RainReputation: User is delinquent and cannot earn reputation");
         
         reputationScores[user] += amount;
+        
+        // --- MODIFIED: Update total reputation ---
+        totalReputation += amount;
+
         emit ReputationIncreased(user, amount, reason);
     }
 
+
+    /**
+    * @notice Applies a routine, rule-based decrease to a user's reputation score.
+    * @dev This function is intended to be called by the trusted oracle in response to
+    * observable, predictable on-chain events, such as a `PromiseDefaulted` event from
+    * the CalculusEngine. It emits a `ReputationDecreased` event.
+    * @param user The address of the user.
+    * @param amount The amount to decrease the score by.
+    * @param reason A string detailing the specific on-chain event that triggered this decrease.
+    */
     function decreaseReputation(address user, uint256 amount, string calldata reason) external {
         require(hasRole(UPDATER_ROLE, msg.sender), "Caller is not a trusted updater");
-        if (reputationScores[user] >= amount) {
-            reputationScores[user] -= amount;
-        } else {
-            reputationScores[user] = 0;
+        
+        uint256 actualDecrease = reputationScores[user] >= amount ? amount : reputationScores[user];
+
+        if (actualDecrease > 0) {
+            reputationScores[user] -= actualDecrease;
+            // --- MODIFIED: Update total reputation ---
+            totalReputation -= actualDecrease;
         }
-        emit ReputationDecreased(user, amount, reason);
+
+        emit ReputationDecreased(user, actualDecrease, reason);
     }
 
+    /**
+    * @notice Applies a severe, punitive penalty to a user's reputation score.
+    * @dev This function signifies a more serious punishment than a routine decrease. It is
+    * intended for use in response to extraordinary events, such as a governance vote or
+    * a ruling from a future arbitration module. It emits a `ReputationSlashed` event,
+    * signaling a higher level of risk to the ecosystem.
+    * @param user The address of the user to be slashed.
+    * @param amountToSlash The amount to slash the score by.
+    */
     function slash(address user, uint256 amountToSlash) external {
         require(hasRole(UPDATER_ROLE, msg.sender), "Caller is not a trusted updater");
-        
-        if (reputationScores[user] >= amountToSlash) {
-            reputationScores[user] -= amountToSlash;
-        } else {
-            reputationScores[user] = 0;
-        }
 
-        if (stakedReputation[user] >= amountToSlash) {
-            stakedReputation[user] -= amountToSlash;
-        } else {
-            stakedReputation[user] = 0;
-        }
+        // --- REVISED LOGIC TO AVOID DOUBLE COUNTING ---
+        uint256 currentScore = reputationScores[user];
+        uint256 actualSlashAmount = currentScore > amountToSlash ? amountToSlash : currentScore;
 
-        emit ReputationSlashed(user, amountToSlash);
+        if (actualSlashAmount > 0) {
+            reputationScores[user] -= actualSlashAmount;
+            totalReputation -= actualSlashAmount; // Add this line
+            emit ReputationSlashed(user, actualSlashAmount);
+        }
+        // Note: We no longer modify stakedReputation here as per our discussion.
     }
 
     // --- Permissionless Staking Management ---
 
-    /**
-     * @notice Locks a user's reputation as collateral for a specific purpose.
-     * @dev This function is now permissionless and can be called by any contract.
-     * @param user The user whose reputation is being staked.
-     * @param amount The amount of reputation to lock.
-     * @param purposeId A unique ID (e.g., promiseId from CalculusEngine) for the stake's purpose.
-     */
     function stake(address user, uint256 amount, bytes32 purposeId) external {
         require(stakes[purposeId].amount == 0, "Stake for this purpose already exists");
         require(reputationScores[user] - stakedReputation[user] >= amount, "Insufficient liquid reputation");
@@ -133,11 +146,6 @@ contract RainReputation is ERC721, AccessControl {
         emit ReputationStaked(purposeId, user, amount);
     }
 
-    /**
-     * @notice Releases a user's staked reputation, making it liquid again.
-     * @dev This function is now permissionless and can be called by any contract.
-     * @param purposeId The unique ID of the stake to release.
-     */
     function releaseStake(bytes32 purposeId) external {
         Stake storage s = stakes[purposeId];
         require(s.amount > 0, "Stake does not exist");

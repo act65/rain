@@ -1,4 +1,4 @@
-// File: contracts/scripts/LoanScript.sol (Updated with Delinquency Check)
+// File: contracts/scripts/LoanScript.sol (Updated with Default Resolution Logic)
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.0;
 
@@ -16,12 +16,17 @@ interface ICalculusEngine {
 interface IRainReputation {
     function stake(address user, uint256 amount, bytes32 purposeId) external;
     function releaseStake(bytes32 purposeId) external;
-    // --- NEW: Add isDelinquent to the interface ---
     function isDelinquent(address user) external view returns (bool);
 }
 
+// --- UPDATED INTERFACE ---
 interface IReputationClaimToken {
-    function mint(address defaulter, address originalLender, uint256 shortfallAmount, address loanContract) external returns (uint256);
+    // The `promiseId` is now a required parameter for minting
+    function mint(uint256 promiseId, address defaulter, address originalLender, uint256 shortfallAmount, address loanContract) external returns (uint256);
+    function burn(uint256 tokenId) external;
+    function ownerOf(uint256 tokenId) external view returns (address);
+    // We need to be able to read the claim data from the LoanScript
+    function claims(uint256 tokenId) external view returns (uint256 promiseId, address defaulterAddress, address originalLenderAddress, uint256 shortfallAmount, uint256 defaultTimestamp, address loanContractAddress);
 }
 
 interface IERC20 {
@@ -30,10 +35,8 @@ interface IERC20 {
 
 /**
  * @title LoanScript
- * @author Rain Protocol
- * @dev An example application built on the Rain Protocol eDSL. This script facilitates
- * a simple, reputation-staked, peer-to-peer loan. It demonstrates how to compose
- * the core primitives to create a useful financial product.
+ * @dev Updated to include a mechanism for resolving defaults, which allows a borrower
+ * to reclaim their staked reputation after settling their debt.
  */
 contract LoanScript {
 
@@ -57,7 +60,6 @@ contract LoanScript {
         Status status;
     }
 
-    // The loanId is the borrower's promiseId from the CalculusEngine
     mapping(uint256 => Loan) public loans;
 
     // --- EVENTS ---
@@ -66,8 +68,9 @@ contract LoanScript {
     event LoanFunded(uint256 indexed loanId);
     event LoanRepaid(uint256 indexed loanId);
     event LoanDefaulted(uint256 indexed loanId, uint256 rctId);
+    // --- NEW EVENT ---
+    event LoanResolved(uint256 indexed loanId, uint256 indexed rctId);
 
-    // --- SETUP ---
 
     constructor(
         address _calculusEngineAddress,
@@ -81,41 +84,23 @@ contract LoanScript {
         usdcToken = IERC20(_usdcTokenAddress);
     }
 
-    // --- LOAN LIFECYCLE ---
+    // --- LOAN LIFECYCLE (No changes to request, fund, or repay) ---
 
-    /**
-     * @notice Borrower initiates a loan request.
-     * @dev This function orchestrates the first set of eDSL primitives: creating the
-     * action, logging the promises, and staking the reputation collateral.
-     */
     function requestLoan(
         address lender,
         uint256 principal,
         uint256 interest,
-        uint256 duration, // in seconds
+        uint256 duration,
         uint256 reputationStake
     ) external {
         address borrower = msg.sender;
         uint256 deadline = block.timestamp + duration;
-
-        // --- NEW: Risk Management Check ---
-        // This is the application's responsibility: check the information provided
-        // by the core protocol before proceeding.
         require(!rainReputation.isDelinquent(borrower), "LoanScript: Borrower is delinquent");
-
-        // 1. Start the economic session by calling the interpreter's entry point.
         uint256 actionId = calculusEngine.monitoredAction(borrower);
-
-        // 2. Create the two core promises, linked to the actionId.
         uint256 lenderPromiseId = calculusEngine.monitoredPromise(actionId, lender, borrower, address(usdcToken), principal, deadline);
         uint256 borrowerPromiseId = calculusEngine.monitoredPromise(actionId, borrower, lender, address(usdcToken), principal + interest, deadline);
-
-        // 3. Stake the borrower's reputation, using their promiseId as the unique purpose.
-        // This creates an unbreakable on-chain link between the stake and the debt.
         bytes32 purposeId = bytes32(borrowerPromiseId);
         rainReputation.stake(borrower, reputationStake, purposeId);
-
-        // 4. Store the loan details in our script's local state.
         loans[borrowerPromiseId] = Loan({
             borrower: borrower,
             lender: lender,
@@ -126,73 +111,78 @@ contract LoanScript {
             lenderPromiseId: lenderPromiseId,
             status: Status.Pending
         });
-
         emit LoanRequested(borrowerPromiseId, borrower, lender, principal);
     }
 
-    /**
-     * @notice Lender funds the loan.
-     * @param loanId The ID of the loan, which is the borrower's promiseId.
-     */
     function fundLoan(uint256 loanId) external {
         Loan storage loan = loans[loanId];
         require(loan.lender == msg.sender, "Not the lender");
         require(loan.status == Status.Pending, "Loan not pending");
-
-        // The lender must have approved the CalculusEngine to spend their USDC.
-        // This is done in the user's wallet, not in this contract.
-
-        // Get the actionId from the promise stored in the engine.
         (uint256 actionId,,,,,,) = calculusEngine.promises(loanId);
-
-        // Use the eDSL to transfer funds and fulfill the lender's promise.
         calculusEngine.monitoredTransfer(actionId, address(usdcToken), loan.lender, loan.borrower, loan.principal);
         calculusEngine.monitoredFulfillment(loan.lenderPromiseId);
-
         loan.status = Status.Active;
         emit LoanFunded(loanId);
     }
 
-    /**
-     * @notice Borrower repays the loan.
-     * @param loanId The ID of the loan.
-     */
     function repayLoan(uint256 loanId) external {
         Loan storage loan = loans[loanId];
         require(loan.borrower == msg.sender, "Not the borrower");
         require(loan.status == Status.Active, "Loan not active");
         require(block.timestamp <= loan.deadline, "Loan past due");
-
-        // The borrower must have approved the CalculusEngine for the full repayment amount.
         (uint256 actionId,,,,,,) = calculusEngine.promises(loanId);
         uint256 totalRepayment = loan.principal + loan.interest;
-
-        // Use the eDSL to transfer repayment, fulfill the promise, and release the stake.
         calculusEngine.monitoredTransfer(actionId, address(usdcToken), loan.borrower, loan.lender, totalRepayment);
-        calculusEngine.monitoredFulfillment(loanId); // Fulfill the borrower's promise
+        calculusEngine.monitoredFulfillment(loanId);
         rainReputation.releaseStake(bytes32(loanId));
-
         loan.status = Status.Repaid;
         emit LoanRepaid(loanId);
     }
 
-    /**
-     * @notice Anyone can declare a loan as defaulted after the deadline has passed.
-     * @param loanId The ID of the loan.
-     */
+    // --- UPDATED DEFAULT LOGIC ---
+
     function claimDefault(uint256 loanId) external {
         Loan storage loan = loans[loanId];
         require(loan.status == Status.Active, "Loan not active");
         require(block.timestamp > loan.deadline, "Deadline not passed");
 
-        // Use the eDSL to mark the promise as defaulted. The oracle will see this.
+        // Mark the promise as defaulted. The oracle will see this and slash the score.
         calculusEngine.monitoredDefault(loanId);
 
-        // As the script that witnessed the default, we mint an RCT to the lender.
-        // The shortfall is the principal the lender lost.
-        uint256 rctId = rctContract.mint(loan.borrower, loan.lender, loan.principal, address(this));
+        // Mint an RCT to the lender. We now pass the `loanId` so the RCT has a
+        // permanent record of the promise it represents.
+        // NOTE: We DO NOT release the stake. It is now held hostage by the protocol.
+        uint256 rctId = rctContract.mint(loanId, loan.borrower, loan.lender, loan.principal, address(this));
 
         loan.status = Status.Defaulted;
         emit LoanDefaulted(loanId, rctId);
+    }
+
+    // --- NEW DEFAULT RESOLUTION LOGIC ---
+
+    /**
+     * @notice Allows the original borrower to resolve their default after they have
+     * re-acquired their RCT, enabling them to reclaim their staked reputation.
+     * @param rctId The ID of the ReputationClaimToken to be burned.
+     */
+    function resolveDefault(uint256 rctId) external {
+        // 1. Get the data associated with the RCT.
+        (uint256 promiseId, address defaulter, , , , ) = rctContract.claims(rctId);
+
+        // 2. Ensure the person calling this function is the original defaulter.
+        require(msg.sender == defaulter, "Only the original defaulter can resolve their own debt");
+
+        // 3. Ensure the defaulter now owns the RCT (they bought it back or settled with the lender).
+        require(rctContract.ownerOf(rctId) == msg.sender, "You must own the RCT to resolve the default");
+
+        // 4. Burn the RCT. This is the "proof of settlement." The RCT contract will
+        //    automatically clear the user's delinquent status if this is their last debt.
+        rctContract.burn(rctId);
+
+        // 5. Release the original reputation stake that was held hostage.
+        bytes32 purposeId = bytes32(promiseId);
+        rainReputation.releaseStake(purposeId);
+
+        emit LoanResolved(promiseId, rctId);
     }
 }
