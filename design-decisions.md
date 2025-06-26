@@ -1,0 +1,1 @@
+- could change dividends to be propto available reputation?

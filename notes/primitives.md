@@ -72,3 +72,5 @@ However, this is a living language. The framework is designed to be extensible t
 *   **`conditionalPromise`:** A promise that is only activated if another promise is fulfilled or defaulted, allowing for complex, chained agreements.
 
 The decision to add new primitives will be up to the Rain DAO, allowing the eDSL to evolve with the needs of the developers building on it. For now, the existing toolkit provides a powerful and complete foundation for the next generation of decentralized finance.
+
+<!-- make a note about how control flow is avaliable via solidity. we don't reinvent / reimplement this in Rain -->
