@@ -42,6 +42,7 @@ This demo consists of four core smart contracts and three Python scripts to simu
 *   Node.js and npm (for Ganache)
 *   `ganache-cli` installed globally (`npm install -g ganache-cli`)
 *   `eth-brownie` installed (`pip install eth-brownie`)
+    *   Docker (optional, for containerized setup)
 
 ### Installation & Running the Demo
 
@@ -84,6 +85,64 @@ This demo consists of four core smart contracts and three Python scripts to simu
         ```bash
         brownie run scripts/03_simulate_insurance.py --network development
         ```
+
+## Running with Docker (Recommended for Consistency)
+
+This project includes a Docker setup to provide a consistent environment for development and testing.
+
+### Prerequisites for Docker
+
+*   Docker installed and running on your system.
+
+### Building the Docker Image
+
+First, build the Docker image. From the project root directory:
+```bash
+./docker_helper.sh build
+```
+
+### Running Tests with Docker
+
+The easiest way to run the tests using Docker is with the `all` command, which handles starting Ganache, running tests, and stopping Ganache:
+```bash
+./docker_helper.sh all
+```
+This will:
+1. Build the image if it hasn't been built (or use the existing one).
+2. Start a Ganache container in the background.
+3. Execute `brownie test` inside the container.
+4. Stop and remove the Ganache container.
+
+Alternatively, you can manage the Ganache container and test execution separately:
+
+1.  **Start Ganache Container:**
+    ```bash
+    ./docker_helper.sh start_ganache
+    ```
+    This will start a Ganache instance in a detached container, exposing port 8545.
+
+2.  **Run Brownie Tests:**
+    Once Ganache is running, execute the tests:
+    ```bash
+    ./docker_helper.sh test
+    ```
+    This command runs `brownie test` inside the already running container.
+
+3.  **Stop Ganache Container:**
+    When you're done, stop the Ganache container:
+    ```bash
+    ./docker_helper.sh stop_ganache
+    ```
+
+### Interactive Shell in Docker Container
+
+To get an interactive shell inside the running container (e.g., for manual `brownie console` sessions or debugging):
+1. Ensure the Ganache container is running: `./docker_helper.sh start_ganache`
+2. Open a shell:
+   ```bash
+   ./docker_helper.sh shell
+   ```
+   You'll be inside the container as the `appuser` in the `/home/appuser/app` directory. Brownie and Ganache CLI commands will be available.
 
 ## Future Development Roadmap
 

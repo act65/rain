@@ -1,0 +1,25 @@
+# Docker ignore file
+
+# Git
+.git
+.gitignore
+
+# Docker
+Dockerfile
+.dockerignore
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.venv
+venv/
+env/
+
+# Node
+node_modules/
+
+# Brownie
+build/
+reports/

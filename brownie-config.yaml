@@ -22,8 +22,8 @@ networks:
   # Default development network
   development:
     host: http://127.0.0.1:8545
-    # Optional: mnemonic for accounts
-    # mnemonic: "your-ganache-mnemonic-here"
+    # Mnemonic from start_ganache.sh for deterministic test accounts
+    mnemonic: "candy maple cake sugar pudding cream honey rich smooth crumble sweet treat"
     gas_limit: "max"
     gas_price: 0
     reverting_tx_gas_limit: "max"

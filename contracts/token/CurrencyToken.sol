@@ -1,4 +1,4 @@
-// File: contracts/CurrencyToken.sol
+// File: contracts/token/CurrencyToken.sol
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.0;
 

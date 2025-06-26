@@ -1,0 +1,5 @@
+- DAO for governance. to take over the owner role.
+- decentralised computation of the python scripts (gas fees paid from treasury, proof-of-stake with the USDC, consensus mechanism and dispute resolution, ...)
+- optimise reputation changes (block gas limits, batchiing, ...)
+- improvements to RCT? more than symbolic. (if the user has USD, just take it from there?)
+-
