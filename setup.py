@@ -5,8 +5,6 @@ setup(
     version="0.1.0",
     packages=find_packages(),
     description="Off-chain utilities for the Rain protocol.",
-    long_description=open('README.md').read() if hasattr(__builtins__, 'open') else '',
-    long_description_content_type="text/markdown",
     author="Rain Protocol",
     author_email="",  # Add appropriate email
     url="https://github.com/rainlanguage/rain-protocol", # Replace with actual URL if different
