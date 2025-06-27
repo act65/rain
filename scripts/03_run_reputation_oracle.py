@@ -7,6 +7,8 @@ from brownie import (
     RainReputation,
     ReputationUpdater,
 )
+from rain.utils import load_deployment_data
+from rain.reputation import process_promise_events, REP_GAIN_ON_FULFILLMENT, REP_LOSS_ON_DEFAULT # Updated import
 import json
 import time
 
@@ -21,10 +23,7 @@ BLOCK_BATCH_SIZE = 1000
 # How many blocks to wait for confirmation before processing
 BLOCK_CONFIRMATIONS = 5 
 
-# The "Rules Engine" parameters for the oracle
-REP_GAIN_ON_FULFILLMENT = 25 * (10**18)  # Reward for keeping a promise
-REP_LOSS_ON_DEFAULT = 100 * (10**18) # Penalty for breaking a promise
-
+# REP_GAIN_ON_FULFILLMENT and REP_LOSS_ON_DEFAULT are now imported from rain.reputation
 
 def load_state():
     """Loads the last processed block number from the state file."""
@@ -33,49 +32,32 @@ def load_state():
             return json.load(f)
     except FileNotFoundError:
         # If the file doesn't exist, we start from the block the engine was deployed
-        with open(DEPLOYMENT_FILE) as f:
-            addresses = json.load(f)
-        engine_deployment_tx_hash = CalculusEngine.at(addresses["CalculusEngine"]).tx.txid
-        engine_deployment_block = network.chain.get_transaction(engine_deployment_tx_hash).block_number
-        return {"last_processed_block": engine_deployment_block}
+        addresses = load_deployment_data(DEPLOYMENT_FILE)
+        if not addresses or "CalculusEngine" not in addresses:
+            print("Error: Could not load CalculusEngine address for initial state. Exiting oracle.")
+            # In a real scenario, might raise an exception or handle differently
+            return {"last_processed_block": network.chain.height - BLOCK_CONFIRMATIONS -1} # Fallback
+
+        engine_contract_address = addresses["CalculusEngine"]
+        # Ensure the contract is deployed and accessible before getting tx details
+        try:
+            engine_contract = CalculusEngine.at(engine_contract_address)
+            engine_deployment_tx_hash = engine_contract.tx.txid
+            engine_deployment_block = network.chain.get_transaction(engine_deployment_tx_hash).block_number
+            print(f"Oracle state file not found. Initializing from CalculusEngine deployment block: {engine_deployment_block}")
+            return {"last_processed_block": engine_deployment_block}
+        except Exception as e:
+            print(f"Error accessing CalculusEngine deployment info: {e}. Defaulting last processed block.")
+            # Fallback if contract or tx info isn't available (e.g., not yet run on this network)
+            return {"last_processed_block": network.chain.height - BLOCK_CONFIRMATIONS -1 if network.chain.height > BLOCK_CONFIRMATIONS else 0}
 
 def save_state(state):
     """Saves the last processed block number to the state file."""
     with open(ORACLE_STATE_FILE, "w") as f:
         json.dump(state, f, indent=4)
 
-def process_events(engine, start_block, end_block):
-    """Fetches and processes promise events within a given block range."""
-    increases = []
-    decreases = []
-
-    print(f"  - Scanning for events from block {start_block} to {end_block}...")
-
-    # Fetch events within the block range
-    fulfilled_events = engine.events.get_sequence(
-        event_type="PromiseFulfilled", from_block=start_block, to_block=end_block
-    )
-    defaulted_events = engine.events.get_sequence(
-        event_type="PromiseDefaulted", from_block=start_block, to_block=end_block
-    )
-
-    # Process fulfilled promises -> Reputation GAIN
-    for event in fulfilled_events:
-        promise_id = event.args.promiseId
-        promise_data = engine.promises(promise_id)
-        promisor = promise_data[1] # promisor is the 2nd element
-        increases.append({"user": promisor, "amount": REP_GAIN_ON_FULFILLMENT, "reason": f"PROMISE_FULFILLED:{promise_id}"})
-        print(f"    - Found fulfilled promise {promise_id} by {promisor[:10]}...")
-
-    # Process defaulted promises -> Reputation LOSS
-    for event in defaulted_events:
-        promise_id = event.args.promiseId
-        promise_data = engine.promises(promise_id)
-        promisor = promise_data[1]
-        decreases.append({"user": promisor, "amount": REP_LOSS_ON_DEFAULT, "reason": f"PROMISE_DEFAULTED:{promise_id}"})
-        print(f"    - Found defaulted promise {promise_id} by {promisor[:10]}...")
-        
-    return increases, decreases
+# The process_events function has been moved to rain.reputation.py
+# It is now imported as process_promise_events.
 
 def main():
     """
@@ -87,10 +69,12 @@ def main():
 
     # --- 1. SETUP ---
     state = load_state()
-    last_processed_block = state["last_processed_block"]
+    last_processed_block = state.get("last_processed_block", 0) # Use .get for safety
     
-    with open(DEPLOYMENT_FILE) as f:
-        addresses = json.load(f)
+    addresses = load_deployment_data(DEPLOYMENT_FILE)
+    if not addresses:
+        print("Failed to load deployment addresses for oracle. Exiting.")
+        return
 
     calculus_engine = CalculusEngine.at(addresses["CalculusEngine"])
     reputation_updater = ReputationUpdater.at(addresses["ReputationUpdater"])
@@ -113,7 +97,8 @@ def main():
 
     for start in range(last_processed_block + 1, target_block + 1, BLOCK_BATCH_SIZE):
         end = min(start + BLOCK_BATCH_SIZE - 1, target_block)
-        increases, decreases = process_events(calculus_engine, start, end)
+        # Use the imported function from rain.reputation
+        increases, decreases = process_promise_events(calculus_engine, start, end)
         all_increases.extend(increases)
         all_decreases.extend(decreases)
 

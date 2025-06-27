@@ -9,7 +9,7 @@ from brownie import (
     ReputationUpdater,
     TreasuryV2,
 )
-import json
+from rain.utils import save_deployment_data # Updated import
 
 # --- CONFIGURATION ---
 INITIAL_REPUTATION = 100 * (10**18)
@@ -123,7 +123,6 @@ def main():
         "ReputationUpdater": reputation_updater.address,
         "TreasuryV2": treasury_v2.address,
     }
-    with open(DEPLOYMENT_FILE, "w") as f:
-        json.dump(deployment_data, f, indent=4)
+    save_deployment_data(deployment_data, DEPLOYMENT_FILE) # Use the utility function
 
     print("\nDeployment and setup complete!")

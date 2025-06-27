@@ -34,6 +34,17 @@ COPY --chown=appuser:appuser requirements.txt .
 RUN pip install --no-cache-dir --user -r requirements.txt
 
 # -----------------------------------------------------------------------------
+# 2.5. Install local `rain` library
+# -----------------------------------------------------------------------------
+# Copy the rain library code and its setup file
+COPY --chown=appuser:appuser setup.py .
+COPY --chown=appuser:appuser rain/ ./rain
+
+# Install the rain library. This allows scripts and tests to import it.
+# Using "." because setup.py is in the current WORKDIR /home/appuser/app
+RUN pip install --no-cache-dir --user .
+
+# -----------------------------------------------------------------------------
 # 3. Compile Contracts & Dependencies (Changes only when contracts change)
 #    This is the key change. We compile here to cache the solc download.
 # -----------------------------------------------------------------------------

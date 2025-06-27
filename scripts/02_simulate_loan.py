@@ -9,7 +9,7 @@ from brownie import (
     RainReputation,
     ReputationClaimToken,
 )
-import json
+from rain.utils import load_deployment_data # Updated import
 import time
 
 DEPLOYMENT_FILE = "deployment_addresses.json"
@@ -32,8 +32,10 @@ def main():
     charlie = accounts[3] # Borrower (Unhappy & Resolution Path)
 
     # Load contract addresses
-    with open(DEPLOYMENT_FILE) as f:
-        addresses = json.load(f)
+    addresses = load_deployment_data(DEPLOYMENT_FILE)
+    if not addresses:
+        print("Failed to load deployment addresses. Exiting.")
+        return
 
     # Create contract objects
     calculus_engine = CalculusEngine.at(addresses["CalculusEngine"])
