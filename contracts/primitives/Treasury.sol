@@ -200,9 +200,46 @@ contract Treasury is AccessControl, ReentrancyGuard {
         return usdcToken.balanceOf(address(this)) + totalInvested; // Placeholder for invested value
     }
 
-    function getCycleDetails(uint256 _cycleId) external view returns (DividendCycle memory) {
+    // --- REPLACEMENT GETTER FUNCTIONS ---
+
+    /**
+    * @notice Returns the primary details of a dividend cycle, excluding the mapping.
+    * @dev This is the correct pattern for returning struct data externally.
+    */
+    function getCycleDetails(uint256 _cycleId)
+        external
+        view
+        returns (
+            uint256 id,
+            bytes32 merkleRoot,
+            uint256 totalAmount,
+            uint256 claimedAmount,
+            uint256 creationTimestamp,
+            uint256 expiryTimestamp
+        )
+    {
         require(_cycleId < dividendCycles.length, "Invalid cycle ID");
-        return dividendCycles[_cycleId];
+        DividendCycle storage cycle = dividendCycles[_cycleId];
+        return (
+            cycle.id,
+            cycle.merkleRoot,
+            cycle.totalAmount,
+            cycle.claimedAmount,
+            cycle.creationTimestamp,
+            cycle.expiryTimestamp
+        );
+    }
+
+    /**
+    * @notice Checks if a specific user has claimed their dividend for a given cycle.
+    * @dev This is the correct way to expose data from a mapping within a struct.
+    * @param _cycleId The ID of the dividend cycle to check.
+    * @param _user The address of the user to check.
+    * @return bool True if the user has claimed, false otherwise.
+    */
+    function hasUserClaimed(uint256 _cycleId, address _user) external view returns (bool) {
+        require(_cycleId < dividendCycles.length, "Invalid cycle ID");
+        return dividendCycles[_cycleId].hasClaimed[_user];
     }
 
     function getNumberOfCycles() external view returns (uint256) {

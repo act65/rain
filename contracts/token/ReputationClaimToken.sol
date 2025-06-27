@@ -98,15 +98,17 @@ contract ReputationClaimToken is ERC721, AccessControl {
     }
 
     /**
-     * @notice Burns an RCT. Can only be called by the owner of the token.
-     * @dev This is a critical step in the debt resolution process. A defaulter must
-     * re-acquire their RCT and call this function to clear their name. If this is
-     * their last outstanding debt, it atomically clears their delinquent status.
-     * @param tokenId The ID of the token to burn.
-     */
+    * @notice Burns an RCT. Can only be called by the owner of the token.
+    * @dev This is a critical step in the debt resolution process. A defaulter must
+    * re-acquire their RCT and call this function to clear their name. If this is
+    * their last outstanding debt, it atomically clears their delinquent status.
+    * @param tokenId The ID of the token to burn.
+    */
     function burn(uint256 tokenId) public virtual {
-        // The OpenZeppelin _burn function implicitly requires that the caller is the owner
-        // of the token, so an explicit `require(ownerOf(tokenId) == msg.sender)` is redundant.
+        // FIX: Explicitly check that the caller is the owner of the token.
+        // The OpenZeppelin _burn function is internal and does not perform this check itself.
+        require(ownerOf(tokenId) == msg.sender, "ERC721: caller is not token owner or approved");
+
         address defaulter = claims[tokenId].defaulterAddress;
         require(debtCount[defaulter] > 0, "Cannot decrement debt count below zero");
 

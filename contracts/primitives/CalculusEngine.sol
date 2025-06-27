@@ -58,7 +58,7 @@ contract CalculusEngine is AccessControl, ReentrancyGuard {
     event PromiseCreated(uint256 indexed promiseId, uint256 indexed actionId, address indexed promisor);
     event PromiseFulfilled(uint256 indexed promiseId);
     event PromiseDefaulted(uint256 indexed promiseId);
-    event ValueTransferred(uint256 indexed actionId, address indexed asset, address indexed from, address indexed to, uint256 amount);
+    event ValueTransferred(uint256 indexed actionId, address indexed asset, address indexed from, address to, uint256 amount);
     event FeeUpdated(uint256 newFee);
 
     constructor(address _usdcTokenAddress, address _treasuryAddress, uint256 _initialProtocolFee) {

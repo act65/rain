@@ -2,8 +2,9 @@
 - move Stablecoin choice to being a hparam instead of hardcoded to USDC
 - add conditionaltransfer, conditionalpromise, ... to support options (these would make our system economically 'complete'?)
 - how are delayed bandits related to promises?
-- move core code utils from py scripts into a python lib.
+- move core code utils from py scripts into a python lib. (and add tests for them)
 - support multi-party contracts!?
 - can now simplify Calculus engine? (don't need monitored action, it's only promises which trigger the fee?)
 - docker deployment (our scripts will need to be deployed separately?)
 - add partialrepayment and stkaed-marketplace contracts
+- 
