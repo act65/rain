@@ -1,0 +1,18 @@
+Metadata-Version: 2.4
+Name: rain-offchain
+Version: 0.1.0
+Summary: Off-chain utilities for the Rain protocol.
+Home-page: https://github.com/rainlanguage/rain-protocol
+Author: Rain Protocol
+Author-email:
+Classifier: Programming Language :: Python :: 3
+Classifier: License :: OSI Approved :: MIT License
+Classifier: Operating System :: OS Independent
+Requires-Python: >=3.8
+License-File: LICENSE
+Dynamic: author
+Dynamic: classifier
+Dynamic: home-page
+Dynamic: license-file
+Dynamic: requires-python
+Dynamic: summary

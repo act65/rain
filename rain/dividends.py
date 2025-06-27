@@ -75,7 +75,7 @@ def calculate_dividend_shares(
 
     # Prepare leaves for the Merkle tree
     hashed_leaves = [
-        web3.solidityKeccak(['address', 'uint256'], [d['account'], d['amount']])
+        web3.solidity_keccak(['address', 'uint256'], [d['account'], d['amount']])
         for d in leaves_data_for_tree
     ]
 
@@ -106,12 +106,12 @@ def get_merkle_proof(
         raise EnvironmentError("MerkleTree library is not installed, cannot generate Merkle proof.")
 
     hashed_leaves = [
-        web3.solidityKeccak(['address', 'uint256'], [d['account'], d['amount']])
+        web3.solidity_keccak(['address', 'uint256'], [d['account'], d['amount']])
         for d in leaves_data
     ]
     merkle_tree_instance = MerkleTree(hashed_leaves)
 
-    user_leaf = web3.solidityKeccak(['address', 'uint256'], [user_address, user_amount])
+    user_leaf = web3.solidity_keccak(['address', 'uint256'], [user_address, user_amount])
     proof = merkle_tree_instance.get_proof(user_leaf)
 
     # Convert bytes to hex strings for easier use, especially with Brownie/Web3.py

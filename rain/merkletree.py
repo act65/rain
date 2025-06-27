@@ -2,8 +2,8 @@ from brownie import web3
 # --- OpenZeppelin-Compatible Merkle Tree Class (Final, Corrected Version) ---
 
 def _solidity_keccak256(types, values):
-    """A wrapper for web3.solidityKeccak that is easier to use."""
-    return web3.solidityKeccak(types, values)
+    """A wrapper for web3.solidity_keccak that is easier to use."""
+    return web3.solidity_keccak(types, values)
 
 class OZMerkleTree:
     """
