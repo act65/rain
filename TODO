@@ -7,4 +7,6 @@
 - can now simplify Calculus engine? (don't need monitored action, it's only promises which trigger the fee?)
 - docker deployment (our scripts will need to be deployed separately?)
 - add partialrepayment and stkaed-marketplace contracts
-- 
+- create docs (from sol code?), python api summary, 
+- test rain py lib
+- debug scripts 03, 04, 05.

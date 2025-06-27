@@ -1,4 +1,5 @@
 # File: 03_run_reputation_oracle.py (General-Purpose & Stateful)
+# This version contains the fix for the "Expected list or tuple, got dict" error.
 
 from brownie import (
     accounts,
@@ -107,8 +108,25 @@ def main():
         print("\nNo new promise resolutions found in the processed blocks.")
     else:
         print("\nFound new events. Committing reputation changes on-chain...")
+
+        # --- FIX: Convert list of dicts to list of tuples ---
+        # The Solidity function `applyReputationChanges` expects an array of structs.
+        # Brownie requires this to be formatted as a list of tuples, where the
+        # tuple elements match the struct's field order (e.g., address, uint256, string).
+        increases_for_tx = [
+            (change['user'], change['amount'], change['reason']) for change in all_increases
+        ]
+        decreases_for_tx = [
+            (change['user'], change['amount'], change['reason']) for change in all_decreases
+        ]
+
         try:
-            tx = reputation_updater.applyReputationChanges(all_increases, all_decreases, {"from": ORACLE_OPERATOR})
+            # Pass the correctly formatted lists of tuples to the function
+            tx = reputation_updater.applyReputationChanges(
+                increases_for_tx,
+                decreases_for_tx,
+                {"from": ORACLE_OPERATOR}
+            )
             print(f"  - Success! Transaction hash: {tx.txid}")
         except Exception as e:
             print(f"  - ERROR: Failed to commit changes: {e}")

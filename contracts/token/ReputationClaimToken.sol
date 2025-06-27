@@ -20,16 +20,14 @@ interface IRainReputation {
  * Key Changes:
  * 1. The `mint` function now stores the `promiseId` of the broken promise, creating a
  *    permanent on-chain link between the debt and its origin.
- * 2. The `burn` function is now permissionless (`public`), allowing the token owner
- *    (e.g., a defaulter who has settled their debt) to burn it directly, which is
- *    essential for reclaiming their staked reputation via a script like LoanScript.
+ * 2. The `burn` function now correctly checks for ownership OR approval, allowing a
+ *    script contract to burn the token on behalf of the owner.
  */
 contract ReputationClaimToken is ERC721, AccessControl {
     using Counters for Counters.Counter;
     Counters.Counter private _tokenIds;
 
     bytes32 public constant MINTER_ROLE = keccak256("MINTER_ROLE");
-    // BURNER_ROLE is no longer needed as burn is now permissionless for the token owner.
 
     IRainReputation public immutable rainReputation;
 
@@ -98,16 +96,16 @@ contract ReputationClaimToken is ERC721, AccessControl {
     }
 
     /**
-    * @notice Burns an RCT. Can only be called by the owner of the token.
+    * @notice Burns an RCT. Can only be called by the owner of the token OR an approved address.
     * @dev This is a critical step in the debt resolution process. A defaulter must
-    * re-acquire their RCT and call this function to clear their name. If this is
-    * their last outstanding debt, it atomically clears their delinquent status.
+    * re-acquire their RCT and approve a script to call this function to clear their name.
+    * If this is their last outstanding debt, it atomically clears their delinquent status.
     * @param tokenId The ID of the token to burn.
     */
     function burn(uint256 tokenId) public virtual {
-        // FIX: Explicitly check that the caller is the owner of the token.
-        // The OpenZeppelin _burn function is internal and does not perform this check itself.
-        require(ownerOf(tokenId) == msg.sender, "ERC721: caller is not token owner or approved");
+        // CORRECTED CHECK: Use the internal OpenZeppelin function to verify ownership or approval.
+        // This allows a contract that has been approved (like LoanScript) to burn the token.
+        require(_isApprovedOrOwner(msg.sender, tokenId), "ERC721: burn caller is not owner nor approved");
 
         address defaulter = claims[tokenId].defaulterAddress;
         require(debtCount[defaulter] > 0, "Cannot decrement debt count below zero");

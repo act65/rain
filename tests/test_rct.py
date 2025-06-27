@@ -127,9 +127,9 @@ def test_mint_subsequent_offense(contracts):
     assert reputation_contract.isDelinquent(defaulter) == True
 
 
-def test_burn_permissions(contracts):
+def test_burn_permissions_by_unapproved_non_owner(contracts):
     """
-    Ensures only the token owner can burn the RCT.
+    Ensures an unapproved, non-owner account cannot burn the RCT.
     """
     _, rct_contract = contracts
     minter = accounts[1]
@@ -140,13 +140,45 @@ def test_burn_permissions(contracts):
     tx = rct_contract.mint(201, defaulter, lender, 1000, accounts[5], {'from': minter})
     token_id = tx.return_value
 
-    # Act & Assert: The defaulter (not the owner) cannot burn it
-    with reverts("ERC721: caller is not token owner or approved"):
+    # Act & Assert: The defaulter (not the owner or approved) cannot burn it
+    with reverts("ERC721: burn caller is not owner nor approved"):
         rct_contract.burn(token_id, {'from': defaulter})
 
     # Act & Assert: A random account cannot burn it
-    with reverts("ERC721: caller is not token owner or approved"):
+    with reverts("ERC721: burn caller is not owner nor approved"):
         rct_contract.burn(token_id, {'from': accounts[9]})
+
+
+def test_burn_by_approved_address(contracts):
+    """
+    Tests that a non-owner who has been approved can burn the token.
+    This simulates the LoanScript workflow.
+    """
+    reputation_contract, rct_contract = contracts
+    minter = accounts[1]
+    owner = accounts[3]  # This account will own the token
+    approved_burner = accounts[4] # This account will be approved to burn it
+    defaulter_address = accounts[5] # The address of the defaulter recorded in the token
+
+    # 1. Mint a token. The 'owner' now holds it.
+    tx = rct_contract.mint(501, defaulter_address, owner, 1000, accounts[6], {'from': minter})
+    token_id = tx.return_value
+    assert rct_contract.ownerOf(token_id) == owner
+
+    # 2. The owner approves 'approved_burner' to manage this specific token
+    rct_contract.approve(approved_burner, token_id, {'from': owner})
+    assert rct_contract.getApproved(token_id) == approved_burner
+
+    # 3. The 'approved_burner' (who is not the owner) successfully burns the token
+    burn_tx = rct_contract.burn(token_id, {'from': approved_burner})
+
+    # Assert: Token is gone
+    with reverts("ERC721: invalid token ID"):
+        rct_contract.ownerOf(token_id)
+
+    # Assert: Event was emitted correctly
+    assert 'ClaimBurned' in burn_tx.events
+    assert burn_tx.events['ClaimBurned']['burner'] == approved_burner
 
 
 def test_full_lifecycle_reacquire_and_burn(contracts):

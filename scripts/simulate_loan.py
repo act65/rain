@@ -1,5 +1,3 @@
-# File: scripts/02_simulate_loan.py (Updated to test the full default resolution lifecycle)
-
 from brownie import (
     accounts,
     chain,
@@ -9,7 +7,7 @@ from brownie import (
     RainReputation,
     ReputationClaimToken,
 )
-from rain.utils import load_deployment_data # Updated import
+from rain.utils import load_deployment_data
 import time
 
 DEPLOYMENT_FILE = "deployment_addresses.json"
@@ -37,6 +35,7 @@ def main():
         print("Failed to load deployment addresses. Exiting.")
         return
 
+    print("\n--- Phase 1: Setup ---")
     # Create contract objects
     calculus_engine = CalculusEngine.at(addresses["CalculusEngine"])
     currency_token = CurrencyToken.at(addresses["CurrencyToken"])
@@ -59,6 +58,11 @@ def main():
     rct_contract.grantRole(minter_role, loan_script.address, {"from": deployer})
     print("Granted MINTER_ROLE to LoanScript.")
 
+    # Grant the LoanScript permission to create sessions in the CalculusEngine
+    print("Granting SESSION_CREATOR_ROLE to LoanScript...")
+    session_creator_role = calculus_engine.SESSION_CREATOR_ROLE()
+    calculus_engine.grantRole(session_creator_role, loan_script.address, {"from": deployer})
+    print("Granted SESSION_CREATOR_ROLE to LoanScript.")
 
     # --- 2. HAPPY PATH SIMULATION: Bob borrows from Alice ---
     print("\n\n--- Phase 2: Happy Path (Bob borrows from Alice) ---")
@@ -69,6 +73,11 @@ def main():
 
     print(f"Initial Reputation - Bob: {rain_reputation.reputationScores(bob) / 10**18}")
     print(f"Initial Balance - Alice: {currency_token.balanceOf(alice) / 10**18}, Bob: {currency_token.balanceOf(bob) / 10**18}")
+
+    print("\nStep A-pre: Bob approves the protocol fee...")
+    protocol_fee = calculus_engine.protocolFee()
+    currency_token.approve(calculus_engine.address, protocol_fee, {"from": bob})
+    print(f"  - Bob approved CalculusEngine to spend {protocol_fee / 10**18} for the protocol fee.")
 
     print("\nStep A: Bob requests a loan...")
     tx_req = loan_script.requestLoan(alice.address, principal, interest, duration_seconds, reputation_stake, {"from": bob})
@@ -90,10 +99,14 @@ def main():
     print(f"  - Bob's Staked Reputation: {rain_reputation.stakedReputation(bob) / 10**18} (should be 0)")
     print(f"  - Final Balances: Alice={currency_token.balanceOf(alice) / 10**18}, Bob={currency_token.balanceOf(bob) / 10**18}")
 
-
     # --- 3. UNHAPPY PATH SIMULATION: Charlie borrows from Alice and defaults ---
     print("\n\n--- Phase 3: Unhappy Path (Charlie borrows from Alice) ---")
     print(f"Initial Reputation - Charlie: {rain_reputation.reputationScores(charlie) / 10**18}")
+
+    print("\nStep A-pre: Charlie approves the protocol fee...")
+    # We can re-use the protocol_fee variable from above
+    currency_token.approve(calculus_engine.address, protocol_fee, {"from": charlie})
+    print(f"  - Charlie approved CalculusEngine to spend {protocol_fee / 10**18} for the protocol fee.")
 
     print("\nStep A: Charlie requests a loan...")
     tx_req_def = loan_script.requestLoan(alice.address, principal, interest, duration_seconds, reputation_stake, {"from": charlie})
@@ -127,6 +140,10 @@ def main():
     rct_contract.transferFrom(alice.address, charlie.address, rct_id, {"from": alice})
     print(f"  - RCT {rct_id} is now owned by Charlie.")
     assert rct_contract.ownerOf(rct_id) == charlie.address
+
+    print("\nStep B-pre: Charlie approves the LoanScript to burn the RCT...")
+    rct_contract.approve(loan_script.address, rct_id, {"from": charlie})
+    print(f"  - Charlie approved LoanScript to manage RCT {rct_id}.")
 
     print("\nStep B: Charlie resolves the default using the LoanScript...")
     # This assumes your LoanScript has the new `resolveDefault` function.

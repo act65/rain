@@ -7,7 +7,7 @@ from brownie import (
     ReputationClaimToken,
     CalculusEngine,
     ReputationUpdater,
-    TreasuryV2,
+    Treasury,
 )
 from rain.utils import save_deployment_data # Updated import
 
@@ -50,12 +50,12 @@ def main():
     rct_contract = ReputationClaimToken.deploy(rain_reputation.address, {"from": deployer})
     print(f"ReputationClaimToken (RCT) deployed at: {rct_contract.address}")
 
-    treasury_v2 = TreasuryV2.deploy(currency_token.address, TREASURY_CLAIM_PERIOD, {"from": deployer})
-    print(f"TreasuryV2 deployed at: {treasury_v2.address}")
+    treasury = Treasury.deploy(currency_token.address, TREASURY_CLAIM_PERIOD, {"from": deployer})
+    print(f"Treasury deployed at: {treasury.address}")
 
     calculus_engine = CalculusEngine.deploy(
         currency_token.address,
-        treasury_v2.address,
+        treasury.address,
         CALCULUS_ENGINE_FEE,
         {"from": deployer},
     )
@@ -90,9 +90,9 @@ def main():
     print(f" - Granted UPDATER_ROLE on ReputationUpdater to deployer (for simulation).")
     
     # Grant deployer the right to manage the Treasury
-    manager_role = treasury_v2.MANAGER_ROLE()
-    treasury_v2.grantRole(manager_role, deployer.address, {"from": deployer})
-    print(f" - Granted MANAGER_ROLE on TreasuryV2 to deployer.")
+    manager_role = treasury.MANAGER_ROLE()
+    treasury.grantRole(manager_role, deployer.address, {"from": deployer})
+    print(f" - Granted MANAGER_ROLE on Treasury to deployer.")
 
     # Grant deployer the right to mint RCTs (acting as a LoanScript)
     minter_role = rct_contract.MINTER_ROLE()
@@ -121,7 +121,7 @@ def main():
         "ReputationClaimToken": rct_contract.address,
         "CalculusEngine": calculus_engine.address,
         "ReputationUpdater": reputation_updater.address,
-        "TreasuryV2": treasury_v2.address,
+        "Treasury": treasury.address,
     }
     save_deployment_data(deployment_data, DEPLOYMENT_FILE) # Use the utility function
 
