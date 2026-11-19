@@ -1,0 +1,243 @@
+{
+ "provenance": {
+  "utc": "2026-11-19T15:12:29+00:00",
+  "commit": "e290e24",
+  "commit_short": "e290e24",
+  "dirty": false,
+  "dirty_paths": "not recorded (stamp passed through the environment)",
+  "branch": null,
+  "python": "3.12.3",
+  "host": "devbox.europe-west4-a.c.dev-compute-d7766860.internal"
+ },
+ "parameters": {
+  "floor": 100.0,
+  "top": 10000.0,
+  "interest": 0.05,
+  "shock": 0.02,
+  "r": 0.05,
+  "fee_rate": 0.01
+ },
+ "repeat_value": 0.4142857142857137,
+ "share_bounds": {
+  "first_loan_loses_above": 0.02818270165208941,
+  "no_lending_above": 0.3031358885017419
+ },
+ "known_borrower": {
+  "grid_points": 401,
+  "states_where_the_loan_is_raised": 0,
+  "value_per_unit_due": 0.41428571372571615,
+  "repeat_value": 0.4142857142857137,
+  "worst_gap_to_repeating": 5.599983254889196e-10
+ },
+ "first_loan": [
+  {
+   "share": 0.0,
+   "best_first_due": 100.0,
+   "value": 41.42857137630493,
+   "formula_value": 41.428571428571374,
+   "first_loan_alone": 2.7619047619047605,
+   "price_of_information": 0.0
+  },
+  {
+   "share": 0.1,
+   "best_first_due": 5.0,
+   "value": 34.448095191055394,
+   "formula_value": 27.76190476190471,
+   "first_loan_alone": -7.03809523809524,
+   "price_of_information": 7.03809523809524
+  },
+  {
+   "share": 0.2,
+   "best_first_due": 5.0,
+   "value": 30.091428529615378,
+   "formula_value": 14.095238095238049,
+   "first_loan_alone": -16.83809523809524,
+   "price_of_information": 16.83809523809524
+  },
+  {
+   "share": 0.3,
+   "best_first_due": 5.0,
+   "value": 25.734761868175358,
+   "formula_value": 0.4285714285713844,
+   "first_loan_alone": -26.63809523809524,
+   "price_of_information": 26.63809523809524
+  },
+  {
+   "share": 0.31,
+   "best_first_due": 5.0,
+   "value": 25.299095202031353,
+   "formula_value": 0.0,
+   "first_loan_alone": -27.61809523809524,
+   "price_of_information": 27.61809523809524
+  },
+  {
+   "share": 0.4,
+   "best_first_due": 5.0,
+   "value": 21.378095206735342,
+   "formula_value": 0.0,
+   "first_loan_alone": -36.43809523809524,
+   "price_of_information": 36.43809523809524
+  }
+ ],
+ "simulation": [
+  {
+   "share": 0.0,
+   "simulated": 41.445590359495355,
+   "standard_error": 0.09259301863826545,
+   "formula": 41.428571428571374
+  },
+  {
+   "share": 0.1,
+   "simulated": 27.708743070782656,
+   "standard_error": 0.10922445299085001,
+   "formula": 27.76190476190471
+  },
+  {
+   "share": 0.2,
+   "simulated": 14.00818988691841,
+   "standard_error": 0.11972625336714171,
+   "formula": 14.095238095238049
+  },
+  {
+   "share": 0.3,
+   "simulated": 0.42262082913266963,
+   "standard_error": 0.12569164108732586,
+   "formula": 0.4285714285713844
+  },
+  {
+   "share": 0.4,
+   "simulated": -13.182153103718562,
+   "standard_error": 0.12785564692159584,
+   "formula": -13.238095238095273
+  }
+ ],
+ "policies": {
+  "repeat the floor": {
+   "simulated": 27.70033369078314,
+   "standard_error": 0.10923736193287006
+  },
+  "accept 10% risk on every loan (each 1.089 times the last)": {
+   "simulated": -84.57894807694268,
+   "standard_error": 0.1204782110388405
+  },
+  "double every loan": {
+   "simulated": -408.78164027087314,
+   "standard_error": 1.3786392178069573
+  },
+  "raise by the interest rate (1.05)": {
+   "simulated": -32.11534075239332,
+   "standard_error": 0.10982770269395901
+  },
+  "require every loan to break even (myopic)": {
+   "simulated": 0.0,
+   "standard_error": 0.0,
+   "note": "the first loan alone expects -7.04, so it is refused"
+  }
+ },
+ "growth": [
+  {
+   "interest": 0.05,
+   "largest_tail_index_with_growth": 0.3,
+   "predicted": 0.3,
+   "step_at_tail_0_2": 213.79620895022322
+  },
+  {
+   "interest": 0.1,
+   "largest_tail_index_with_growth": 0.52,
+   "predicted": 0.52,
+   "step_at_tail_0_2": 1230.268770812381
+  },
+  {
+   "interest": 0.2,
+   "largest_tail_index_with_growth": 0.72,
+   "predicted": 0.72,
+   "step_at_tail_0_2": 3162.277660168379
+  }
+ ],
+ "identity": [
+  {
+   "applications_per_genuine": 0.25,
+   "identity_cost": 0.0,
+   "identity_bound": 0.0,
+   "best_first_due": 100.0,
+   "value": 17.619047619047564
+  },
+  {
+   "applications_per_genuine": 0.25,
+   "identity_cost": 20.0,
+   "identity_bound": 21.222839818089945,
+   "best_first_due": 100.0,
+   "value": 17.619047619047564
+  },
+  {
+   "applications_per_genuine": 0.25,
+   "identity_cost": 60.0,
+   "identity_bound": 63.668519454269834,
+   "best_first_due": 63.6,
+   "value": 26.348571428571393
+  },
+  {
+   "applications_per_genuine": 0.25,
+   "identity_cost": 120.0,
+   "identity_bound": 127.33703890853967,
+   "best_first_due": 100.0,
+   "value": 41.428571428571374
+  },
+  {
+   "applications_per_genuine": 1.0,
+   "identity_cost": 0.0,
+   "identity_bound": 0.0,
+   "best_first_due": 0.0,
+   "value": 0.0
+  },
+  {
+   "applications_per_genuine": 1.0,
+   "identity_cost": 20.0,
+   "identity_bound": 21.222839818089945,
+   "best_first_due": 21.2,
+   "value": 8.782857142857132
+  },
+  {
+   "applications_per_genuine": 1.0,
+   "identity_cost": 60.0,
+   "identity_bound": 63.668519454269834,
+   "best_first_due": 63.6,
+   "value": 26.348571428571393
+  },
+  {
+   "applications_per_genuine": 1.0,
+   "identity_cost": 120.0,
+   "identity_bound": 127.33703890853967,
+   "best_first_due": 100.0,
+   "value": 41.428571428571374
+  },
+  {
+   "applications_per_genuine": 10.0,
+   "identity_cost": 0.0,
+   "identity_bound": 0.0,
+   "best_first_due": 0.0,
+   "value": 0.0
+  },
+  {
+   "applications_per_genuine": 10.0,
+   "identity_cost": 20.0,
+   "identity_bound": 21.222839818089945,
+   "best_first_due": 21.2,
+   "value": 8.782857142857132
+  },
+  {
+   "applications_per_genuine": 10.0,
+   "identity_cost": 60.0,
+   "identity_bound": 63.668519454269834,
+   "best_first_due": 63.6,
+   "value": 26.348571428571393
+  },
+  {
+   "applications_per_genuine": 10.0,
+   "identity_cost": 120.0,
+   "identity_bound": 127.33703890853967,
+   "best_first_due": 100.0,
+   "value": 41.428571428571374
+  }
+ ]
+}

@@ -22,15 +22,16 @@ SHARES = [0.0, 0.1, 0.2, 0.3, 0.31, 0.4]
 
 # --- the dynamic programme: every sequence of loan sizes ---
 
-def solve(tail, interest=I, top=TOP, points=401, growth_cap=None):
+def solve(tail, interest=I, top=TOP, points=401, growth_cap=None, bottom=FLOOR):
     """
     The lender's best policy for a borrower whose largest repayment is M (on a log grid from the
     floor to `top`). Returns (grid, value, index of the best next amount due; -1 means stop lending).
     """
-    grid = np.geomspace(FLOOR, top, points)
+    grid = np.geomspace(bottom, top, points)
     principal = grid / (1 + interest)
     idx = np.arange(points)
-    repay = (1 - Q) * np.minimum(1.0, (grid[:, None] / grid[None, :]) ** tail)
+    known = np.maximum(grid, FLOOR)  # everyone genuine is good for the floor, whatever they have repaid so far
+    repay = (1 - Q) * np.minimum(1.0, (known[:, None] / grid[None, :]) ** tail)
     nxt = np.maximum(idx[:, None], idx[None, :])
     allowed = np.ones((points, points), dtype=bool)
     if growth_cap is not None:
@@ -59,6 +60,28 @@ def best_first_loan(opportunist_share, grid, value, tail=1.0, interest=I):
     total = -opportunist_share * principal + (1 - opportunist_share) * genuine
     j = int(np.argmax(total))
     return (float(first[j]), float(total[j])) if total[j] > 0 else (0.0, 0.0)
+
+
+def capped_first_loan(opportunist_share, grid, value, policy, interest=I):
+    """
+    The best first amount due when every later loan is at most `1 + interest` times the largest
+    repaid. A stranger who repays X is in state X of the capped programme. Returns (due, value).
+    """
+    principal = grid / (1 + interest)
+    repay = (1 - Q) * np.minimum(1.0, FLOOR / grid)
+    genuine = repay * (interest * principal + BETA * value) - (1 - repay) * principal
+    total = -opportunist_share * principal + (1 - opportunist_share) * genuine
+    j = int(np.argmax(total))
+    return (float(grid[j]), float(total[j]), j) if total[j] > 0 else (0.0, 0.0, -1)
+
+
+def follow(grid, policy, start, horizon):
+    """The amounts due along the capped policy for a borrower who keeps repaying, from first loan `start`."""
+    dues, j = [float(grid[start])], start
+    for _ in range(horizon - 1):
+        j = int(policy[j])
+        dues.append(float(grid[j]))
+    return dues
 
 
 # --- Monte Carlo: borrowers, one by one ---
@@ -152,7 +175,37 @@ def main():
             p7.append(dict(applications_per_genuine=m, identity_cost=cost, identity_bound=bound,
                            best_first_due=float(candidates[j]) if values[j] > 1e-9 else 0.0, value=max(0.0, float(values[j]))))
 
-    out = dict(provenance=run_provenance(), parameters=dict(floor=FLOOR, top=TOP, interest=I, shock=Q, r=R, fee_rate=PHI),
+    # Follow-up (8 to 10): each loan at most 1 + i times the largest repaid, from the first loan on.
+    cgrid, cvalue, cpolicy = solve(1.0, growth_cap=1 + I, bottom=FLOOR / 100, points=945)  # grid ratio 1.05 ** (1 / 5)
+    step = np.where(cpolicy >= 0, cgrid[np.maximum(cpolicy, 0)] / cgrid, 0.0)
+    below, above = cgrid < FLOOR / 1.05, cgrid >= FLOOR
+    p8 = dict(step_below_floor=[float(step[below].min()), float(step[below].max())],
+              step_at_or_above_floor=[float(step[above].min()), float(step[above].max())], rows=[])
+    for share in (0.0, 0.05, 0.1, 0.2, 0.3, 0.4, 0.5, 0.55, 0.58, 0.6, 0.65):
+        due, total, j = capped_first_loan(share, cgrid, cvalue, cpolicy)
+        repeat_only = max(0.0, ladder.stranger_value(FLOOR, share, FLOOR, 1.0, I, Q, R)["relationship"])
+        row = dict(share=share, best_first_due=due, value=total, value_of_lending_the_floor=repeat_only)
+        if j >= 0:
+            principal = due / (1 + I)
+            row["first_loan_alone"] = -share * principal + (1 - share) * ((1 - Q) * I * principal - Q * principal)
+        p8["rows"].append(row)
+    lending = [r["share"] for r in p8["rows"] if r["value"] > 0]
+    p8["largest_share_with_lending"] = max(lending)
+
+    p9 = []
+    for cost in (20.0, 60.0):
+        bound = ladder.identity_bound(cost, PHI, I)
+        j = int(np.searchsorted(cgrid, bound, side="right") - 1)  # the largest grid amount within the bound
+        p9.append(dict(identity_cost=cost, identity_bound=bound, start=float(cgrid[j]),
+                       value_climbing=float(cvalue[j]) if False else float(
+                           (1 - Q) * (I * cgrid[j] / (1 + I) + BETA * cvalue[j]) - Q * cgrid[j] / (1 + I)),
+                       value_repeating=ladder.stranger_value(float(cgrid[j]), 0.0, FLOOR, 1.0, I, Q, R)["relationship"]))
+
+    due, total, j = capped_first_loan(0.3, cgrid, cvalue, cpolicy)
+    mean, se = simulate(follow(cgrid, cpolicy, j, horizon), 0.3, seed=2)
+    p10 = dict(share=0.3, first_due=due, programme=total, simulated=mean, standard_error=se)
+
+    out = dict(provenance=run_provenance(), follow_up=dict(capped_first_loan=p8, identity_then_climb=p9, simulation=p10), parameters=dict(floor=FLOOR, top=TOP, interest=I, shock=Q, r=R, fee_rate=PHI),
                repeat_value=v, share_bounds=dict(first_loan_loses_above=lo, no_lending_above=hi),
                known_borrower=p1, first_loan=p2, simulation=p4, policies=p5, growth=p6, identity=p7)
     (HERE / "results").mkdir(exist_ok=True)
@@ -179,6 +232,18 @@ def main():
     L += ["", "## 7. Opportunists who can come back: the best first amount due", "",
           "| opportunist applications per genuine borrower | identity cost | identity bound | best first amount due | value per genuine borrower |", "|---|---|---|---|---|"]
     L += [f"| {r['applications_per_genuine']} | {r['identity_cost']:.0f} | {r['identity_bound']:.1f} | {r['best_first_due']:.1f} | {r['value']:.1f} |" for r in p7]
+    L += ["", "## Follow-up: each loan at most 1.05 times the largest repaid", "",
+          f"Best step below the floor: {p8['step_below_floor'][0]:.3f} to {p8['step_below_floor'][1]:.3f}; "
+          f"at or above the floor: {p8['step_at_or_above_floor'][0]:.3f} to {p8['step_at_or_above_floor'][1]:.3f}. "
+          f"Largest share tried at which strangers are still lent to: {100 * p8['largest_share_with_lending']:.0f}%.", "",
+          "| opportunist share | best first amount due | relationship value | value of starting at the floor | first loan alone |", "|---|---|---|---|---|"]
+    L += [f"| {100 * r['share']:.0f}% | {r['best_first_due']:.1f} | {r['value']:.2f} | {r['value_of_lending_the_floor']:.2f} | "
+          + (f"{r['first_loan_alone']:+.2f}" if "first_loan_alone" in r else "-") + " |" for r in p8["rows"]]
+    L += ["", "Returning opportunists, unlimited: start at the identity bound and climb.", "",
+          "| identity cost | start | value climbing to the floor | value repeating the start |", "|---|---|---|---|"]
+    L += [f"| {r['identity_cost']:.0f} | {r['start']:.1f} | {r['value_climbing']:.1f} | {r['value_repeating']:.1f} |" for r in p9]
+    L += ["", f"Simulation of the best policy at a 30% share (first loan {p10['first_due']:.1f}): "
+          f"{p10['simulated']:.2f} (standard error {p10['standard_error']:.2f}); programme {p10['programme']:.2f}."]
     (HERE / "results" / "SUMMARY.md").write_text("\n".join(L) + "\n")
     print("\n".join(L))
 

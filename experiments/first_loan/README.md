@@ -71,3 +71,40 @@ Borrowers are not strategic beyond the opportunists: a genuine borrower's thresh
 Whether a borrower stays with a lender who never raises their loan is a separate question (`rain.ladder`'s
 "stay" bound says growth of about 2% a loan is needed for a borrower to prefer staying, in a different model).
 One lender, no competition. The floor, the tail index and the shock rate are assumed.
+
+## Outcome (2026-11-19)
+
+Numbers are in `results/SUMMARY.md`.
+
+| prediction | outcome |
+|---|---|
+| 1. with `a` = 1 the lender never raises a loan | Held: the best policy raises the loan in 0 of 401 states, and its value is the repeat value, 0.414 per unit due. |
+| 2. the first loan is the floor; no lending above 30.3% opportunists | **Wrong.** The search found a better policy: make the first loan as small as allowed (5, the smallest I let it try), then lend the floor. A tiny loan screens out opportunists almost for nothing, because I had them take the first loan *whatever its size*. That policy is worth 34.5 per stranger at a 10% share where starting at the floor is worth 27.8, and it stays profitable at any share. My formula only covered policies that repeat the first amount. |
+| 3. first loan made at an expected loss between 2.8% and 30.3% | The numbers held for the policy they describe (lend the floor, then repeat): -7.04 and +27.76 at 10%, -16.84 and +14.10 at 20%. Given the outcome of 2, that policy is not the best one. |
+| 4. simulation agrees with the formula | Held at all five shares, within two standard errors. |
+| 5. the 10%-risk ladder loses money; the myopic lender earns nothing | Held: -84.6 per stranger against +27.7 for repeating the floor. Raising by 5% a loan from the floor loses 32; doubling loses 409. |
+| 6. raising pays only for tail index below 0.30, 0.54, 0.73 | Held: 0.30, 0.52, 0.72. When it does pay, the steps are large (hundreds of times at tail index 0.2). |
+| 7. with returning opportunists the first loan is the identity bound | Held in every cell, searching over all first amounts and not only the two I named. With free identities and at least as many opportunists as genuine borrowers, nothing is lent. |
+
+The failure of 2 is a gap in the model, not a result about lending. An opportunist who would repay a loan of
+5 in order to be offered 100 is not screened by the small loan. `rain.ladder`'s exit bound says when climbing
+in order to default stops paying: when each loan is at most `1 + i` times the last. So the question has to be
+asked with that constraint on the lender.
+
+## Follow-up: the lender may raise a loan by at most the interest rate (2026-11-19)
+
+Same model, with one constraint: each amount due is at most 1.05 times the largest this borrower has repaid,
+from the first loan on. Then an opportunist gains nothing by repaying in order to default later, and taking
+the first loan is their best move, as assumed. The grid now extends below the floor.
+
+Predictions (written before this run):
+
+8. **The first loan is below the floor, and smaller the more opportunists there are**: between 80 and 95 at a
+   10% share, 50 and 70 at 20%, 35 and 60 at 30%. After it the best policy raises the loan by the full 5% each
+   time until the floor, and never after. Lending to strangers stays worthwhile until about 59% opportunists
+   (57% to 61%), far above the 30.3% of the repeat-only policy.
+9. **With returning opportunists, the ladder starts at the price of an identity.** Unlimited opportunists and
+   an identity cost of 20 or 60: the lender starts at the identity bound (21.2 or 63.7) and climbs to the
+   floor, worth 18.5 and 36.9 per genuine borrower (within 5%), against 8.8 and 26.3 for repeating the bound.
+10. **A simulation of the best policy at a 30% share agrees with the dynamic programme** within 2% or two
+    standard errors.
