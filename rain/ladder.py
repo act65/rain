@@ -146,6 +146,39 @@ def identity_bound(identity_cost: float, fee_rate: float, interest_rate: float) 
     return identity_cost / (1 / (1 + interest_rate) - fee_rate)
 
 
+# --- A borrower who chooses: where the threshold comes from ---
+
+def repay_surplus_threshold(interest_rate: float, shock_rate: float, r: float, fee_rate: float = 0.0,
+                            fee_returned: float = 0.0) -> float:
+    """
+    sigma*: the least net return per loan (what the borrowed money earns beyond the interest, as a
+    fraction of the principal) at which a borrower prefers repaying a loan that will simply be
+    offered again to keeping the money and being shut out. Below it they default on a loan that
+    has stopped growing, whatever its size.
+
+    Each period the borrower receives the principal, earns (sigma + i) on it, pays the fee, and
+    then either repays or keeps the principal; with probability `shock_rate` the money is lost and
+    the relationship ends. `fee_returned` is the share of a fee that returns as dividends on the
+    reputation a kept promise earns. Roughly sigma* = r + q: the borrower's impatience plus the
+    chance that the relationship ends anyway.
+    """
+    beta, q, i = 1 / (1 + r), shock_rate, interest_rate
+    a = (1 + i) * (1 - fee_returned * fee_rate)  # what repaying costs, per unit of principal
+    return a * (1 - (1 - q) * beta) / beta + fee_rate * (1 + i) - i - (1 - q) * (1 - a)
+
+
+def capacity_threshold(capacity: float, surplus_rate: float, interest_rate: float, shock_rate: float, r: float,
+                       fee_rate: float = 0.0, fee_returned: float = 0.0) -> float:
+    """
+    The largest principal a borrower will keep repaying when it is offered again each period, if
+    they can put only `capacity` of it to use: capacity * (sigma + i) / (sigma* + i). This is the
+    "threshold" of the threshold model, derived: it is proportional to capacity, so it has the same
+    tail, and it exceeds capacity exactly for borrowers whose return is above sigma*.
+    """
+    star = repay_surplus_threshold(interest_rate, shock_rate, r, fee_rate, fee_returned)
+    return capacity * (surplus_rate + interest_rate) / (star + interest_rate)
+
+
 def repayment_history(engine_contract, borrower: str, asset: str = None, from_block: int = 0, to_block: int = None) -> dict:
     """
     What the CalculusEngine's promise log says about `borrower` as a promisor:
