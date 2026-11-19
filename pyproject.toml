@@ -19,6 +19,7 @@ dev = [
     "ape-solidity>=0.8,<0.9",
     "pytest",
     "hypothesis",
+    "matplotlib",
 ]
 
 [build-system]
