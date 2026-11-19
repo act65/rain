@@ -202,6 +202,45 @@ def largest_amount_due(repaid: Sequence[Repaid], risk_tolerance: float, floor: f
     return lo
 
 
+# --- Credit that cannot be manufactured: a record is worth what it cost ---
+
+def graduated_credit(
+    entries: Sequence[Entry], subject: str, reader: str, start: float, growth: float, sunk_fee_share: float,
+    asset: Optional[str] = None,
+) -> float:
+    """
+    The largest amount due `reader` can accept from `subject` unsecured, by a rule that no ring of
+    confederates can profit from whatever the reader believes about anyone:
+
+        credit = min( evidence,  growth * own + cost since )
+
+      - `own` is the largest amount the subject has repaid to the reader itself (if none, the
+        first term is `start`, what the reader would lend a stranger);
+      - `cost since` is what the subject has sunk in fees on kept promises after that repayment
+        (before it, if there is none): `sunk_fee_share` of each fee, the part that does not come
+        back as dividends. A record is worth as credit what it cost to make;
+      - `growth` is at most 1 + the interest rate, so that repaying in order to default later
+        returns nothing (the exit bound of `rain.ladder`);
+      - `evidence` is the largest amount the subject has repaid to anyone, never less than `start`:
+        if they are genuine it is what they have shown they are good for, and the other term
+        makes it unprofitable to be anything else.
+
+    A newcomer with a guarantor builds `evidence` at once and `cost` with every loan, and so
+    outgrows the guarantor. See experiments/graduation.
+    """
+    subject, reader = str(subject), str(reader)
+    kept = [e for e in entries if str(e.promisor) == subject and e.kept and (asset is None or str(e.asset) == str(asset))]
+    evidence = max([start] + [float(e.amount) for e in kept])
+    own = [i for i, e in enumerate(kept) if str(e.promisee) == reader]
+    if own:
+        last = max(own, key=lambda i: (kept[i].amount, i))  # the largest repayment to the reader; the latest of equals
+        base, since = growth * float(kept[last].amount), kept[last + 1:]
+    else:
+        base, since = float(start), kept
+    cost = sunk_fee_share * sum(float(e.fee_paid) for e in since)
+    return min(evidence, base + cost)
+
+
 # --- Reading a chain ---
 
 def read_entries(engine_contract: Any, from_block: int = 0, to_block: Optional[int] = None) -> List[Entry]:
