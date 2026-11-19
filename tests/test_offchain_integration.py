@@ -379,3 +379,30 @@ def test_repayment_history_is_read_from_the_promise_log(system):
     assert repayment_history(s.engine, s.carol.address, asset=s.usdc.address) == dict(kept=1, broken=0, largest_kept=700 * E18)
     assert repayment_history(s.engine, s.alice.address) == dict(kept=0, broken=0, largest_kept=0)  # lending is not a promise
     assert repayment_history(s.engine, s.bob.address, asset=s.rct.address) == dict(kept=0, broken=0, largest_kept=0)
+
+
+def test_a_reader_who_trusts_everyone_recovers_the_on_chain_counters(system):
+    """`rain.record` on the chain's log: with full trust and fee weights it is the two on-chain counters."""
+    from rain.record import by_fee, read_entries, weigh
+    s = system
+    for principal in (100, 400):
+        s.loan.repayLoan(loan(s, s.bob, s.alice, principal=principal * E18, interest=0), sender=s.bob)
+    s.loan.repayLoan(loan(s, s.bob, s.carol, principal=700 * E18, interest=0), sender=s.bob)
+    broken = loan(s, s.bob, s.alice, principal=50 * E18, interest=0)
+    advance(DURATION + 1)
+    s.loan.claimDefault(broken, sender=s.alice)
+    run_oracle(s)
+
+    entries = read_entries(s.engine)
+    assert [(e.promisee, e.kept) for e in entries] == [
+        (s.alice.address, True), (s.alice.address, True), (s.carol.address, True), (s.alice.address, False)]
+    everyone = weigh(entries, s.bob.address, weight=by_fee(s.engine.pointPrice()))
+    assert everyone.kept * E18 == pytest.approx(s.rep.reputationScores(s.bob) - (START_REP - STAKE))  # what the oracle credited
+    assert everyone.broken * E18 == pytest.approx(s.rep.brokenScores(s.bob))
+    assert everyone.largest_repaid == 700 * E18
+
+    # A reader who only knows Alice sees less: Carol might be Bob's friend.
+    alices = weigh(entries, s.bob.address, trust={s.alice.address: 1.0})
+    assert (alices.kept, alices.broken, alices.largest_repaid) == (2, 1, 400 * E18)
+    assert weigh(entries, s.alice.address).kept == 0  # lending is not a promise
+

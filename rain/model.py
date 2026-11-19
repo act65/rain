@@ -35,6 +35,7 @@ from dataclasses import dataclass, field
 from typing import Dict, List, Optional
 
 from rain import economics
+from rain.record import Entry
 
 
 @dataclass
@@ -103,6 +104,7 @@ class Economy:
     fee_credits: Dict[str, float] = field(default_factory=dict)  # fees on promises kept this cycle (issuance only)
     agents: Dict[str, Agent] = field(default_factory=dict)
     loans: List[Loan] = field(default_factory=list)
+    log: List[Entry] = field(default_factory=list)  # resolved loan promises, as a reader of the chain would see them
     dividend_history: List[float] = field(default_factory=list)
 
     @classmethod
@@ -289,6 +291,7 @@ class Economy:
         self.open_loans.discard(loan_id)
         self.release_stake(loan.borrower, loan.bond)
         self.fulfil_promise(loan.borrower, fee_paid=loan.fee_paid)
+        self._record(loan, kept=True)
         loan.status = "repaid"
 
     def default_loan(self, loan_id: int) -> None:
@@ -296,7 +299,12 @@ class Economy:
         self.open_loans.discard(loan_id)
         self.forfeit_stake(loan.borrower, loan.bond)
         self.default_promise(loan.borrower, fee_paid=loan.fee_paid)
+        self._record(loan, kept=False)
         loan.status = "defaulted"
+
+    def _record(self, loan: Loan, kept: bool) -> None:
+        self.log.append(Entry(promisor=loan.borrower, promisee=loan.lender, amount=loan.principal + loan.interest,
+                              kept=kept, time=self.cycle, fee_paid=loan.fee_paid))
 
     def resolve_default(self, loan_id: int, settlement: Optional[float] = None) -> None:
         """The defaulter buys the claim back (by default for the full amount owed) and burns it."""
