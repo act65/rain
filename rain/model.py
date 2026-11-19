@@ -76,6 +76,7 @@ class Loan:
     # the guarantor's to the lender, each for the amount due and each paying its own fee.
     guarantor: Optional[str] = None
     guarantor_fee: float = 0.0
+    funded_in: Optional[int] = None  # the cycle in which the promises were made
 
 
 @dataclass
@@ -287,6 +288,7 @@ class Economy:
             raise ValueError("Borrower is delinquent")
         loan.fee_paid = self.make_promise(loan.borrower, amount=loan.principal + loan.interest)
         self._pay(loan.lender, loan.borrower, loan.principal)
+        loan.funded_in = self.cycle
         loan.status = "active"
 
     def repay_loan(self, loan_id: int) -> None:
@@ -318,7 +320,7 @@ class Economy:
             raise ValueError("Borrower, guarantor and lender must be three parties")
         if self.agents[borrower].delinquent or self.agents[guarantor].delinquent:
             raise ValueError("Borrower or guarantor is delinquent")
-        loan = Loan(borrower, lender, principal, interest, bond=0.0, guarantor=guarantor)
+        loan = Loan(borrower, lender, principal, interest, bond=0.0, guarantor=guarantor, funded_in=self.cycle)
         loan.fee_paid = self.make_promise(borrower, amount=principal + interest)
         loan.guarantor_fee = self.make_promise(guarantor, amount=principal + interest)
         self._pay(lender, borrower, principal)
@@ -343,12 +345,13 @@ class Economy:
 
     def _record_guarantee(self, loan: Loan, kept: bool) -> None:
         self.log.append(Entry(promisor=loan.guarantor, promisee=loan.lender, amount=loan.principal + loan.interest,
-                              kept=kept, time=self.cycle, fee_paid=loan.guarantor_fee))
+                              kept=kept, time=self.cycle, fee_paid=loan.guarantor_fee, created=loan.funded_in))
 
     def _record(self, loan: Loan, kept: bool) -> None:
         # On a guaranteed loan the borrower's promise is to the guarantor, who answers to the lender.
         self.log.append(Entry(promisor=loan.borrower, promisee=loan.guarantor or loan.lender,
-                              amount=loan.principal + loan.interest, kept=kept, time=self.cycle, fee_paid=loan.fee_paid))
+                              amount=loan.principal + loan.interest, kept=kept, time=self.cycle, fee_paid=loan.fee_paid,
+                              created=loan.funded_in))
 
     def resolve_default(self, loan_id: int, settlement: Optional[float] = None) -> None:
         """The defaulter buys the claim back (by default for the full amount owed) and burns it."""

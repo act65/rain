@@ -147,3 +147,27 @@ def test_the_model_logs_resolved_loans():
     ev = weigh(e.log, "a", trust={"bank": 1.0}, weight=by_fee(0.04))
     assert (ev.kept, ev.broken) == pytest.approx((1.05 / 0.04, 2.1 / 0.04))
     assert ev.broken == pytest.approx(e.agents["a"].broken)  # the reader's broken counter is the chain's
+
+
+# --- credit that cannot be manufactured ---
+
+def test_graduated_credit_by_hand():
+    from rain.record import graduated_credit
+    kw = dict(reader=BANK, start=100, growth=1.05, sunk_fee_share=0.625)
+    assert graduated_credit([], A, **kw) == 100  # a stranger
+    # A record with someone else is worth what it cost, and no more than it shows
+    wash = [Entry(A, FRIEND, 10_000, True, time=1, fee_paid=100, created=1)]
+    assert graduated_credit(wash, A, **kw) == 100 + 62.5
+    assert graduated_credit([Entry(A, FRIEND, 120, True, time=1, fee_paid=100, created=1)], A, **kw) == 120  # capped by the evidence
+    # After repaying the bank, the next loan is 5% larger plus what has been sunk since that loan was made
+    log = wash + [Entry(A, BANK, 162.5, True, time=3, fee_paid=1.625, created=2)]
+    assert graduated_credit(log, A, **kw) == pytest.approx(1.05 * 162.5 + 0.625 * 1.625)  # its own fee; the wash is already in it
+    log.append(Entry(A, FRIEND, 10_000, True, time=3, fee_paid=100, created=2))  # resolved while the loan was out
+    assert graduated_credit(log, A, **kw) == pytest.approx(1.05 * 162.5 + 0.625 * 101.625)
+    # Broken promises and other people's records add nothing; without evidence beyond the start there is no growth
+    assert graduated_credit([Entry(A, FRIEND, 10_000, False, time=1, fee_paid=100)], A, **kw) == 100
+    assert graduated_credit([Entry(A, BANK, 100, True, time=2, fee_paid=1, created=1)], A, **kw) == 100
+    # Where the log does not say when promises were made, only what was resolved after the repayment counts
+    undated = [Entry(A, FRIEND, 10_000, True, time=1, fee_paid=100), Entry(A, BANK, 162.5, True, time=3, fee_paid=1.625),
+               Entry(A, FRIEND, 10_000, True, time=3, fee_paid=100)]
+    assert graduated_credit(undated, A, **kw) == pytest.approx(1.05 * 162.5 + 62.5)

@@ -37,7 +37,10 @@ from typing import Any, Callable, Dict, Hashable, Iterable, List, Mapping, Optio
 
 @dataclass(frozen=True)
 class Entry:
-    """One resolved promise. `time` is in whatever unit the log uses (blocks on a chain, cycles in the model)."""
+    """
+    One resolved promise. `time` is when it was resolved and `created` when it was made, in
+    whatever unit the log uses (blocks on a chain, cycles in the model).
+    """
     promisor: str
     promisee: str
     amount: float
@@ -45,6 +48,7 @@ class Entry:
     time: float = 0.0
     fee_paid: float = 0.0
     asset: Optional[str] = None
+    created: Optional[float] = None
 
 
 Trust = Union[None, Mapping[str, float], Callable[[str], float]]
@@ -216,9 +220,11 @@ def graduated_credit(
 
       - `own` is the largest amount the subject has repaid to the reader itself (if none, the
         first term is `start`, what the reader would lend a stranger);
-      - `cost since` is what the subject has sunk in fees on kept promises after that repayment
-        (before it, if there is none): `sunk_fee_share` of each fee, the part that does not come
-        back as dividends. A record is worth as credit what it cost to make;
+      - `cost since` is what the subject has sunk in fees on promises kept since that loan was
+        made (on all of them, if there is none): `sunk_fee_share` of each fee, the part that does
+        not come back as dividends. A record is worth as credit what it cost to make, and each
+        cost is counted once: costs before that loan was made are already in its amount. (Where
+        the log does not say when promises were made, only those resolved after it was repaid count.)
       - `growth` is at most 1 + the interest rate, so that repaying in order to default later
         returns nothing (the exit bound of `rain.ladder`);
       - `evidence` is the largest amount the subject has repaid to anyone, never less than `start`:
@@ -234,7 +240,9 @@ def graduated_credit(
     own = [i for i, e in enumerate(kept) if str(e.promisee) == reader]
     if own:
         last = max(own, key=lambda i: (kept[i].amount, i))  # the largest repayment to the reader; the latest of equals
-        base, since = growth * float(kept[last].amount), kept[last + 1:]
+        made = kept[last].created
+        base = growth * float(kept[last].amount)
+        since = kept[last + 1:] if made is None else [e for e in kept if e.time > made]
     else:
         base, since = float(start), kept
     cost = sunk_fee_share * sum(float(e.fee_paid) for e in since)
@@ -246,6 +254,8 @@ def graduated_credit(
 def read_entries(engine_contract: Any, from_block: int = 0, to_block: Optional[int] = None) -> List[Entry]:
     """Every promise resolved in the (inclusive) block range of a CalculusEngine's log, in chain order. `time` is the block."""
     entries = []
+    created_in = {log.event_arguments["promiseId"]: log.block_number
+                  for log in engine_contract.PromiseCreated.range(0, engine_contract.PromiseCreated.chain_manager.blocks.height + 1)}
     for event_name, kept in (("PromiseFulfilled", True), ("PromiseDefaulted", False)):
         event = getattr(engine_contract, event_name)
         stop = event.chain_manager.blocks.height if to_block is None else to_block
@@ -253,6 +263,6 @@ def read_entries(engine_contract: Any, from_block: int = 0, to_block: Optional[i
             p = engine_contract.promises(log.event_arguments["promiseId"])
             entries.append((log.block_number, log.log_index, Entry(
                 promisor=str(p[1]), promisee=str(p[2]), asset=str(p[3]), amount=p[4], kept=kept,
-                time=log.block_number, fee_paid=p[7],
+                time=log.block_number, fee_paid=p[7], created=created_in.get(log.event_arguments["promiseId"]),
             )))
     return [entry for _, _, entry in sorted(entries, key=lambda x: (x[0], x[1]))]
