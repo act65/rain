@@ -124,3 +124,40 @@ def test_other_value_of_standing_counts_one_for_one():
 def test_no_surplus_means_access_is_worth_nothing_or_less():
     a = ladder.ladder_default_account(40, surplus_rate=0.0, restart=False, **LADDER)
     assert a["access"] < 0  # carrying on only costs fees; the honest alternative is to stop
+
+
+# --- the lender's side ---
+
+def test_repeat_value_by_direct_summation():
+    i, q, r = 0.05, 0.02, 0.05
+    per_loan = ((1 - q) * i - q) / (1 + i)  # expected profit per unit due on one loan
+    direct = sum(per_loan * ((1 - q) / (1 + r)) ** t for t in range(5000))
+    assert ladder.repeat_value(i, q, r) == pytest.approx(direct)
+    assert ladder.repeat_value(i, q, r) == pytest.approx(0.4143, abs=1e-4)
+    assert ladder.repeat_value(0.01, 0.02, r) < 0  # the margin does not cover the shocks
+
+
+def test_stranger_value_and_the_price_of_information():
+    kw = dict(floor=100, tail_index=1.0, interest_rate=0.05, shock_rate=0.02, r=0.05)
+    none = ladder.stranger_value(100, 0.0, **kw)
+    assert none["relationship"] == pytest.approx(100 * ladder.repeat_value(0.05, 0.02, 0.05))
+    assert none["price_of_information"] == 0
+    some = ladder.stranger_value(100, 0.10, **kw)
+    assert some["first_loan"] == pytest.approx(-7.04, abs=0.01) and some["price_of_information"] == pytest.approx(7.04, abs=0.01)
+    assert some["relationship"] == pytest.approx(27.76, abs=0.01)
+    # Above the floor some genuine borrowers default too
+    assert ladder.stranger_value(200, 0.0, **kw)["relationship"] < none["relationship"]
+
+    lo, hi = ladder.opportunist_share_bounds(0.05, 0.02, 0.05)
+    assert ladder.stranger_value(100, lo, **kw)["first_loan"] == pytest.approx(0, abs=1e-9)
+    assert ladder.stranger_value(100, hi, **kw)["relationship"] == pytest.approx(0, abs=1e-9)
+    assert 0 < lo < hi < 1
+
+
+def test_growth_pays_only_for_heavy_tails_and_identity_bound():
+    assert not ladder.growth_pays(1.0, 0.05, 0.02, 0.05)
+    assert ladder.growth_pays(0.2, 0.05, 0.02, 0.05)
+    assert ladder.growth_pays(0.5, 0.20, 0.02, 0.05) and not ladder.growth_pays(0.5, 0.05, 0.02, 0.05)
+    bound = ladder.identity_bound(20, 0.01, 0.05)
+    assert bound / 1.05 - 0.01 * bound == pytest.approx(20)  # principal less the fee is exactly the identity
+    assert ladder.identity_bound(0, 0.01, 0.05) == 0

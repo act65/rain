@@ -108,3 +108,36 @@ Predictions (written before this run):
    floor, worth 18.5 and 36.9 per genuine borrower (within 5%), against 8.8 and 26.3 for repeating the bound.
 10. **A simulation of the best policy at a 30% share agrees with the dynamic programme** within 2% or two
     standard errors.
+
+### Outcome of the follow-up (2026-11-19)
+
+| prediction | outcome |
+|---|---|
+| 8. first loan below the floor, smaller with more opportunists; raise by 5% to the floor and never after; lending until about 59% | Held: 86.4, 64.5 and 43.6 at shares of 10%, 20% and 30%. The best step is 1.050 everywhere below the floor and 1.000 everywhere at or above it. Strangers are still lent to at 55% and not at 58%. The limit as the first loan shrinks is 59.2%; the smallest loan on the grid is 1, which is why it stops a little earlier. |
+| 9. with returning opportunists, start at the identity bound and climb: 18.5 and 36.9 | Held: 18.5 and 36.8, against 8.8 and 26.2 for repeating the bound. |
+| 10. simulation agrees with the programme | Held: 8.79 (standard error 0.08) against 8.77. |
+
+What this shows:
+
+- **The first loan is a purchase of information, and its size is the lender's choice of how much to buy.**
+  At a 20% opportunist share the best first loan is 64.5 and is expected to lose 10.9 by itself; the
+  relationships it starts make the stranger worth +17.4. A lender who requires every loan to break even lends
+  nothing and earns nothing.
+- **A ladder below the floor, and none above it.** Below the amount every genuine borrower is good for, the
+  lender raises each loan as fast as the exit bound allows, to recover the floor it gave up for screening.
+  Above it, with thresholds of tail index 1, it never raises a loan: the expected amount repaid does not
+  grow with the amount lent, and the principal at risk does. Growth above the floor pays only with a much
+  heavier tail (index below 0.30 at 5% interest).
+- **The 10%-risk ladder of the earlier experiments is not something a lender would run at 5% interest.** It
+  loses 85 per stranger. The risk a lender can accept per loan is set by its margin and by what a survivor is
+  worth, not chosen freely. `standing_value/` and `collusion/` used that ladder as the lender's rule; their
+  conclusions are about the borrower's and the attacker's side and do not depend on the lender profiting, but
+  the lender's side of them should be re-read with this in mind.
+- **Where opportunists can return, the first rung is the price of an identity.** Above it they flood in;
+  at or below it they stay away, and the ladder climbs from there. With free identities nothing can be lent
+  to a stranger at all. This is the same conclusion as `collusion/` from the other side: without a cost of
+  identity, or someone who will answer for the newcomer, there is nowhere to start.
+
+What it does not show: why a borrower would stay with a lender who never raises their loan; what competition
+between lenders does to the first loan (a rival could wait and poach the survivors, which removes the reason to
+pay for the information); or what the floor and the tail index are for real borrowers.

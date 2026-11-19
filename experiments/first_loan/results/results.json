@@ -1,13 +1,125 @@
 {
  "provenance": {
-  "utc": "2026-11-19T15:12:29+00:00",
-  "commit": "e290e24",
-  "commit_short": "e290e24",
+  "utc": "2026-11-19T15:16:21+00:00",
+  "commit": "97daee8",
+  "commit_short": "97daee8",
   "dirty": false,
   "dirty_paths": "not recorded (stamp passed through the environment)",
   "branch": null,
   "python": "3.12.3",
   "host": "devbox.europe-west4-a.c.dev-compute-d7766860.internal"
+ },
+ "follow_up": {
+  "capped_first_loan": {
+   "step_below_floor": [
+    1.04999308924746,
+    1.049993089247461
+   ],
+   "step_at_or_above_floor": [
+    1.0,
+    1.0
+   ],
+   "rows": [
+    {
+     "share": 0.0,
+     "best_first_due": 100.0,
+     "value": 41.42857137630493,
+     "value_of_lending_the_floor": 41.428571428571374,
+     "first_loan_alone": 2.761904761904762
+    },
+    {
+     "share": 0.05,
+     "best_first_due": 95.23872206784802,
+     "value": 34.69703870232475,
+     "value_of_lending_the_floor": 34.59523809523804,
+     "first_loan_alone": -2.0362945813554174
+    },
+    {
+     "share": 0.1,
+     "best_first_due": 86.38546552356496,
+     "value": 28.40134716940129,
+     "value_of_lending_the_floor": 27.76190476190471,
+     "first_loan_alone": -6.079891335420429
+    },
+    {
+     "share": 0.2,
+     "best_first_due": 64.4647100897565,
+     "value": 17.373222423418593,
+     "value_of_lending_the_floor": 14.095238095238049,
+     "first_loan_alone": -10.854629279875189
+    },
+    {
+     "share": 0.3,
+     "best_first_due": 43.634550702978096,
+     "value": 8.767973340704273,
+     "value_of_lending_the_floor": 0.4285714285713844,
+     "first_loan_alone": -11.62341317297426
+    },
+    {
+     "share": 0.4,
+     "best_first_due": 23.142313881085652,
+     "value": 3.0357893214349208,
+     "value_of_lending_the_floor": 0.0,
+     "first_loan_alone": -8.432618372288925
+    },
+    {
+     "share": 0.5,
+     "best_first_due": 6.1997315002555995,
+     "value": 0.38058509327894585,
+     "value_of_lending_the_floor": 0.0,
+     "first_loan_alone": -2.8666377555943745
+    },
+    {
+     "share": 0.55,
+     "best_first_due": 1.180412767677836,
+     "value": 0.033404455621777185,
+     "value_of_lending_the_floor": 0.0,
+     "first_loan_alone": -0.6036406053377276
+    },
+    {
+     "share": 0.58,
+     "best_first_due": 0.0,
+     "value": 0.0,
+     "value_of_lending_the_floor": 0.0
+    },
+    {
+     "share": 0.6,
+     "best_first_due": 0.0,
+     "value": 0.0,
+     "value_of_lending_the_floor": 0.0
+    },
+    {
+     "share": 0.65,
+     "best_first_due": 0.0,
+     "value": 0.0,
+     "value_of_lending_the_floor": 0.0
+    }
+   ],
+   "largest_share_with_lending": 0.55
+  },
+  "identity_then_climb": [
+   {
+    "identity_cost": 20.0,
+    "identity_bound": 21.222839818089945,
+    "start": 21.19684316260434,
+    "value_climbing": 18.490426045046238,
+    "value_repeating": 8.781549310221784
+   },
+   {
+    "identity_cost": 60.0,
+    "identity_bound": 63.668519454269834,
+    "start": 63.21897609091027,
+    "value_climbing": 36.750587973960016,
+    "value_repeating": 26.190718666234215
+   }
+  ],
+  "simulation": {
+   "share": 0.3,
+   "first_due": 43.634550702978096,
+   "programme": 8.767973340704273,
+   "simulated": 8.793641299914619,
+   "standard_error": 0.07649122964323483
+  }
  },
  "parameters": {
   "floor": 100.0,

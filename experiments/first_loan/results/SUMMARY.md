@@ -1,6 +1,6 @@
 # The first loan: results
 
-Commit `e290e24` (dirty: False), 2026-11-19T15:12:29+00:00.
+Commit `97daee8` (dirty: False), 2026-11-19T15:16:21+00:00.
 
 A borrower known to repay an amount is worth 0.414 per unit of it to the lender.
 A first loan loses money in expectation above 2.8% opportunists; no lending to strangers above 30.3%.
@@ -64,3 +64,30 @@ Of 401 states, the best policy raises the loan in 0. Value per unit due 0.4143 (
 | 10.0 | 20 | 21.2 | 21.2 | 8.8 |
 | 10.0 | 60 | 63.7 | 63.6 | 26.3 |
 | 10.0 | 120 | 127.3 | 100.0 | 41.4 |
+
+## Follow-up: each loan at most 1.05 times the largest repaid
+
+Best step below the floor: 1.050 to 1.050; at or above the floor: 1.000 to 1.000. Largest share tried at which strangers are still lent to: 55%.
+
+| opportunist share | best first amount due | relationship value | value of starting at the floor | first loan alone |
+|---|---|---|---|---|
+| 0% | 100.0 | 41.43 | 41.43 | +2.76 |
+| 5% | 95.2 | 34.70 | 34.60 | -2.04 |
+| 10% | 86.4 | 28.40 | 27.76 | -6.08 |
+| 20% | 64.5 | 17.37 | 14.10 | -10.85 |
+| 30% | 43.6 | 8.77 | 0.43 | -11.62 |
+| 40% | 23.1 | 3.04 | 0.00 | -8.43 |
+| 50% | 6.2 | 0.38 | 0.00 | -2.87 |
+| 55% | 1.2 | 0.03 | 0.00 | -0.60 |
+| 58% | 0.0 | 0.00 | 0.00 | - |
+| 60% | 0.0 | 0.00 | 0.00 | - |
+| 65% | 0.0 | 0.00 | 0.00 | - |
+
+Returning opportunists, unlimited: start at the identity bound and climb.
+
+| identity cost | start | value climbing to the floor | value repeating the start |
+|---|---|---|---|
+| 20 | 21.2 | 18.5 | 8.8 |
+| 60 | 63.2 | 36.8 | 26.2 |
+
+Simulation of the best policy at a 30% share (first loan 43.6): 8.79 (standard error 0.08); programme 8.77.
