@@ -65,7 +65,25 @@ def present_value(eco, tick, ring, script):
         if t == 1:
             script(1)
         pv += (money() - before) / (1 + R) ** t
-    return pv, bank_start - eco.agents["bank"].money
+    return pv - idle_value(ring), bank_start - eco.agents["bank"].money
+
+
+_IDLE = {}
+
+
+def idle_value(ring):
+    """What the ring's members would collect anyway (dividends on Sam's earlier loan), so that results are net of it."""
+    key = "sam" in ring
+    if key not in _IDLE:
+        eco, tick, _ = world(0)
+        before, pv = eco.agents["sam"].money, 0.0
+        for t in range(1, HORIZON + 1):
+            tick()
+            now = eco.agents["sam"].money
+            pv += (now - before) / (1 + R) ** t
+            before = now
+        _IDLE[key] = pv if key else 0.0
+    return _IDLE[key]
 
 
 # --- A. manufacturing records through the guarantee ---
