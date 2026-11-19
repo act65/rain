@@ -86,3 +86,45 @@ The bank lends once. Whether Mallory could first build real trust with the bank 
 ladder's exit problem, measured in `standing_value/`. Trust is a number the bank is given; where it should come
 from (the bank's own dealings, a web of trust, proof of personhood) is not modelled. Confederates cost nothing
 to create. The threshold model's parameters are assumed, not fitted.
+
+## Outcome (2026-11-19)
+
+Numbers are in `results/SUMMARY.md`. The formulas match the simulation within 0.75% at every attack checked.
+That is above the 0.5% I set: the worst case is the 68-confederate attack added in part F, and the attacks in
+the original arms are within 0.46%. Both controls behaved: the bank that believes everything is robbed, and
+an honest borrower climbing with the bank itself is offered 1.089 times more after each repayment at either
+trust.
+
+| prediction | outcome |
+|---|---|
+| 1. a wash costs 0.625% of the amount | Held: 0.625% at all three amounts. |
+| 2. a bank that believes the log loses about 0.98 per unit washed | The substance held and the number was too high. The gain over a stranger is 0.96 and 0.97 per unit at 1e4 and 1e5, and 0.87 at 1e3. I left out that the loan arrives a cycle later, the fee on it, and the stranger's loan the attacker gives up. The loss has no limit. |
+| 3. one confederate: the bank accepts at most 1.00, 1.08, 1.74, 9.1, 83 times a stranger's offer | Held as an upper bound. On the first run's coarse grid of amounts the attacker reached 1.00, 1.07, 1.65, 8.3 and 70. With a grid 50 times finer (part F) they reach 1.08, 1.73, 9.08 and 82.3. The best amount to claim is about what the bank will then offer; claiming more is believed less. |
+| 4. many confederates: any trust in unknown counterparties is unbounded exposure | **Wrong for small trust.** At trust 0.5 and 0.9 it held: 20 confederates take 70,000 times a stranger's loan, and 10 take everything the grid allows. At trust 0.1 I predicted more than 5 times with 20 confederates; it is 1.57, and reaching 100 times takes 68. At trust 0.01 it takes 707, and their fees (48,000) exceed the loan: the attack loses. So there is a level of trust below which no ring pays (below). At trust 0 the best attack is no wash, as predicted. |
+| 5. confederates known to be one group are one confederate | Held: the best attack uses one, and the bank accepts 1.07 times a stranger's offer. |
+| 6. an honest borrower's record elsewhere: 108.9, 109.0, 109.8, 119, 1010, 10,890 | Held except at trust 0.999, where it is 972 (I rounded the arithmetic). At trust 0.99 they are 92 rungs from what they have shown elsewhere, as predicted. |
+
+What this shows:
+
+- **A manufactured record is cheap: 0.625% of its face value.** A lender who reads the whole log as evidence,
+  or reads the on-chain score as evidence of anything but fees paid, can be robbed without limit.
+- **A reader who gives unknown counterparties no trust cannot be robbed this way.** A record only counts along
+  the reader's own trust: the bank's own dealings with the borrower, and counterparties it has reason to think
+  independent.
+- **An extraordinary record needs extraordinary trust.** A repayment 100 times what a stranger is thought good
+  for is, to the bank, more likely to be a wash than real unless its trust in the counterparty is above about
+  99.9%. This cuts both ways. It is why one half-trusted confederate gains 8%, and it is why an honest
+  borrower's record with another lender is worth almost nothing to a bank that trusts that lender at 99%.
+  A record is portable only between lenders who trust each other almost completely.
+- **Independence is the assumption that matters.** Half-trusted witnesses are worth little alone and a great
+  deal together, if they are independent. Free identities are not independent, and a reader who cannot tell
+  must treat them as one (prediction 5) or as nothing.
+- **The fee buys a margin of safe trust (part G, computed after the first run, no prediction).** With free
+  identities, no ring of any size gains anything while the bank's trust in unknown counterparties is below
+  about 3.3 times the fee rate: 1.7%, 3.3%, 6.5% and 15.9% for fees of 0.5%, 1%, 2% and 5%. Above it the best
+  ring has around a hundred members. That much trust is too little to help an honest borrower (part E), so the
+  practical rule is still to give unknown counterparties none. But it is the quantitative version of "the
+  record is costly to fake": the fee sets how much unearned trust the system tolerates.
+
+What it does not show: where trust should come from, or what happens when identities have a cost. Both are
+next. So is the attacker who builds real trust with the bank first, which this experiment excludes.

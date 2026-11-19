@@ -96,13 +96,13 @@ def predicted_profit(amount, n, trust_in_unknown, grouped=False):
     else:
         repaid = tuple(((amount, trust_in_unknown),) for _ in range(n))
     due = largest_amount_due(repaid, **BELIEF)
-    take = due / (1 + INTEREST) - max(FMIN, PHI * due) * (1 - KEEP)
+    take = due / (1 + INTEREST) - max(FMIN, PHI * due)  # the fee on a promise that is then broken buys no reputation
     return take / (1 + R) - wash_cost(amount, n), due
 
 
-def best_attack(trust_in_unknown, confederates=CONFEDERATES, grouped=False):
+def best_attack(trust_in_unknown, confederates=CONFEDERATES, grouped=False, amounts=AMOUNTS):
     options = [(*predicted_profit(m, n, trust_in_unknown, grouped), m, n)
-               for n in confederates for m in (AMOUNTS if n else [0.0])]
+               for n in confederates for m in (amounts if n else [0.0])]
     profit, due, amount, n = max(options)
     return dict(profit=profit, due=due, amount=amount, confederates=n)
 
@@ -111,6 +111,43 @@ def max_multiple(trust_in_unknown, n=1):
     """Prediction 3: the largest offer extractable, as a multiple of a stranger's."""
     u = (1 - trust_in_unknown) ** n
     return math.inf if u == 0 else 1 + (1 - P0) * (1 / u - 1)
+
+
+def confederates_needed(trust_in_unknown, multiple):
+    """How many confederates it takes before the bank can be brought to accept `multiple` times a stranger's offer."""
+    doubt = (1 - P0) / (multiple - 1 + (1 - P0))
+    return math.ceil(math.log(doubt) / math.log(1 - trust_in_unknown))
+
+
+def ring_gain(trust_in_unknown, fee_rate, max_confederates=3000):
+    """
+    The best gain over a stranger's default from washing with any number of free confederates,
+    in closed form and vectorised (n identical independent witnesses are one witness of credence
+    1 - (1 - t0) ** n). Returns (gain, confederates, amount).
+    """
+    def take(due):
+        return (due / (1 + INTEREST) - np.maximum(FMIN, fee_rate * due)) / (1 + R)
+
+    n = np.arange(1, max_confederates + 1)[:, None]
+    amount = np.logspace(2, 8, 601)[None, :]
+    u = (1 - trust_in_unknown) ** n
+    s = np.minimum(1.0, (FLOOR / amount) ** TAIL)
+    above = P0 * (u * (1 - s) + s)  # prior survival the offer must have, if the offer is at least the amount
+    below = P0 + s * (1 - P0) * (1 - 1 / np.maximum(u, 1e-300))  # ... if it is less than the amount
+    survival = np.where(above <= s, above, below)
+    due = FLOOR / np.clip(survival, 1e-300, 1.0) ** (1 / TAIL)
+    gain = take(due) - n * np.maximum(FMIN, fee_rate * amount) * (1 - KEEP) - take(np.array(STRANGER_DUE))
+    i, j = np.unravel_index(np.argmax(gain), gain.shape)
+    return float(gain[i, j]), int(n[i, 0]), float(amount[0, j]), float(due[i, j])
+
+
+def safe_trust(fee_rate):
+    """The largest trust in unknown counterparties at which no ring of free confederates gains anything (bisection)."""
+    lo, hi = 0.0, 0.5
+    for _ in range(40):
+        mid = (lo + hi) / 2
+        lo, hi = (mid, hi) if ring_gain(mid, fee_rate)[0] <= 1e-9 else (lo, mid)
+    return lo
 
 
 # --- arms ---
@@ -182,10 +219,38 @@ def main():
             eco.repay_loan(eco.loan("honest", "bank", due / (1 + INTEREST), due - due / (1 + INTEREST)))
         control[str(t0)] = dict(offers=offers, growth=[y / x for x, y in zip(offers, offers[1:])])
 
-    worst = max([stranger["relative_error"]] + [r["relative_error"] for r in b + c + d + [d_grouped]])
+    # F. Added after the first run (see the README): a finer search for arm C, and how many
+    # confederates a given exposure takes when the bank's trust in unknown counterparties is small.
+    fine = [float(x) for x in np.logspace(2, 7, 2001)]
+    f_fine = [dict(trust=t0, multiple=best_attack(t0, confederates=[0, 1], amounts=fine)["due"] / STRANGER_DUE,
+                   predicted_multiple=max_multiple(t0)) for t0 in (0.5, 0.9, 0.99, 0.999)]
+    f_needed = []
+    for t0 in (0.01, 0.1, 0.5, 0.9):
+        n = confederates_needed(t0, 100)
+        amount = 100 * STRANGER_DUE
+        row = checked(amount, n, t0)
+        f_needed.append(dict(trust=t0, confederates=n, amount=amount, multiple=row["simulated_due"] / STRANGER_DUE,
+                             wash_cost=wash_cost(amount, n), profit=row["profit"], simulated_profit=row["simulated_profit"],
+                             relative_error=row["relative_error"]))
+
+    # G. Added after the first run: the trust in unknown counterparties below which no ring pays.
+    for t0, n, m in ((0.1, 68, 100 * STRANGER_DUE), (0.5, 3, 500.0), (0.9, 1, 150.0)):  # the closed form is the library's answer
+        u = (1 - t0) ** n
+        s_ = min(1.0, FLOOR / m)
+        surv = P0 * (u * (1 - s_) + s_) if P0 * (u * (1 - s_) + s_) <= s_ else P0 + s_ * (1 - P0) * (1 - 1 / u)
+        assert abs(FLOOR / surv - predicted_profit(m, n, t0)[1]) < 1e-6 * FLOOR / surv
+    g = []
+    for phi in (0.005, 0.01, 0.02, 0.05):
+        t = safe_trust(phi)
+        gain, n, m, due = ring_gain(1.5 * t, phi)
+        g.append(dict(fee_rate=phi, safe_trust=t, first_order=phi * (1 - KEEP) * (1 + INTEREST) * (1 + R) / (1 - P0),
+                      at_one_and_a_half_times=dict(gain=gain, confederates=n, amount=m, multiple=due / STRANGER_DUE)))
+
+    worst = max([r["relative_error"] for r in f_needed] + [stranger["relative_error"]] + [r["relative_error"] for r in b + c + d + [d_grouped]])
     out = dict(provenance=run_provenance(),
                parameters=dict(kappa=KAPPA, delta=DELTA, r=R, fee_rate=PHI, min_fee=FMIN, interest=INTEREST, **BELIEF),
                stranger=stranger, A=a, B=b, C=c, D=d, D_grouped=d_grouped, E=e, control=control,
+               F=dict(fine_search=f_fine, confederates_for_100x=f_needed), G=g,
                worst_relative_error=worst)
     (HERE / "results").mkdir(exist_ok=True)
     (HERE / "results" / "results.json").write_text(json.dumps(out, indent=1))
@@ -217,6 +282,20 @@ def main():
     L += [f"| {r['trust']} | {r['due']:,.1f} | {100 * r['share_of_full']:.1f}% | {r['rungs_to_reclimb']:.0f} |" for r in e]
     L += ["", "## Control: an honest borrower climbing with the bank itself", ""]
     L += [f"- trust in unknown {t0}: offers {', '.join(f'{x:.1f}' for x in v['offers'])} (growth {v['growth'][0]:.4f} each)" for t0, v in control.items()]
+    L += ["", "## F. Added after the first run", "",
+          "One confederate, amount searched on a grid 50 times finer:", "",
+          "| trust in unknown | bank accepts, multiple of a stranger's | predicted multiple |", "|---|---|---|"]
+    L += [f"| {r['trust']} | {r['multiple']:.2f} | {r['predicted_multiple']:.2f} |" for r in f_fine]
+    L += ["", "Confederates needed to bring the bank to 100 times a stranger's offer, each washing that amount:", "",
+          "| trust in unknown | confederates | cost of the washes | bank accepts, multiple of a stranger's | attacker's profit |", "|---|---|---|---|---|"]
+    L += [f"| {r['trust']} | {r['confederates']} | {r['wash_cost']:,.0f} | {r['multiple']:.1f} | {r['simulated_profit']:,.0f} |" for r in f_needed]
+    L += ["", "## G. Added after the first run: how much trust in unknown counterparties is safe", "",
+          "Free confederates, any number of them, any amount. Below the safe trust no ring gains anything.", "",
+          "| fee | safe trust in unknown counterparties | first-order estimate | best ring at 1.5 times the safe trust |", "|---|---|---|---|"]
+    for r in g:
+        x = r["at_one_and_a_half_times"]
+        L.append(f"| {100 * r['fee_rate']:.1f}% | {100 * r['safe_trust']:.2f}% | {100 * r['first_order']:.2f}% | "
+                 f"{x['confederates']} confederates washing {x['amount']:,.0f} each: {x['multiple']:,.1f} times a stranger's offer, gain {x['gain']:,.0f} |")
     (HERE / "results" / "SUMMARY.md").write_text("\n".join(L) + "\n")
     print("\n".join(L))
 

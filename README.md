@@ -43,6 +43,7 @@ Why the rules are what they are (a fixed price per point, decay, fees paid out, 
 Installed as a local package. The core logic is pure Python and needs no chain.
 
 *   `reputation.py`: the oracle's rules (promise log to reputation changes).
+*   `record.py`: a reader's library. It turns the promise log into one reader's belief about one person, weighing each kept promise by the reader's trust in the counterparty (see `experiments/collusion/`).
 *   `dividends.py`, `merkletree.py`: dividend shares and the Merkle drop.
 *   `model.py`: a pure-Python model of the protocol's accounting, for simulations (checked against the contracts in `tests/test_model_vs_contracts.py`).
 *   `economics.py`: closed forms (what a point is worth, when default pays, the steady state).
