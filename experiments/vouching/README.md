@@ -116,3 +116,14 @@ own. So in this model the newcomer needs the guarantor for ever. Something has t
 guarantee count for a little: the interest paid to the bank is a real cost, 4.8% of each loan, and that is
 evidence of a kind that a wash is not. That needs a belief in which paying to appear reliable is itself
 informative, which is the "fees as the cost of faking" direction and has not been derived.
+
+### Correction and follow-up (2026-11-19)
+
+The 601 that a fake borrower's guaranteed loan "costs the ring" (predictions 1 and 2, and the comparison
+with a plain wash) overstates it. In this experiment the guaranteed loan is taken and repaid in the same
+cycle, so the bank's interest looks like a loss. For a loan outstanding a cycle, at a discount rate equal to
+the interest rate, the interest is the price of having the money for that time and is not sunk. What is sunk
+is the fees: about 129 per 10,000, twice a plain wash, not ten times. The conclusions do not change (the
+sceptical bank loses nothing and the naive one is robbed). `graduation/` uses the correct timing, and
+answers the open question above: a lender can let a record count for exactly what it cost in fees, and the
+newcomer then outgrows the guarantor in 44 loans.

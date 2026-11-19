@@ -83,3 +83,47 @@ to default, not against a genuine borrower who has overstated what they can carr
 (they would pay for the privilege and then fail). Whether a lender wants to drop the guarantor (it bears the
 shock risk itself afterwards) is not modelled; it is profitable to lend unsecured to a known borrower
 (`first_loan/`), and that is all that is assumed.
+
+## Outcome (2026-11-19)
+
+Numbers are in `results/SUMMARY.md`.
+
+| prediction | outcome |
+|---|---|
+| 1. a guaranteed loan outstanding a cycle costs the ring 125 per 10,000 | Close, and outside the 1% I set: 128.6. The reputation the fees buy is credited when the loan is repaid, a cycle after the fees are paid, so slightly less of them comes back. The point stands: fees, not the 601 reported in `vouching/`. |
+| 2. under the rule no strategy beats a stranger's default | Held: of 671 strategies the best is to make no record at all (gain 0). Every strategy that manufactures a record loses, from 0.36 (one wash of 1,000) to 10,833 (washing 100,000 every cycle for 61 cycles). |
+| 3. each control is robbed | Held, by more than I wrote, because the search also tried larger washes than the guaranteed loan I had in mind: evidence alone loses 93,519 to one wash of 100,000; no growth limit, 89,027; cost counted every time, 23,493 after 21 loans. |
+| 4. an honest newcomer outgrows the guarantor in 42 to 45 cycles | Held, after two changes described below: the guaranteed part reaches zero in cycle 44. The unsecured offer goes 100, 168, 239, ..., 8,258 at cycle 40. Alone it stays at 100. |
+| 5. a reputation point is worth 0.025 of first-rung credit | Held: 2,500 points earned by washing raise the offer from 100 to 162.50. |
+
+Two things were changed after the first run, both in favour of the honest newcomer and neither touching the
+attack search's conclusion (which was re-run and still finds no profitable strategy):
+
+- **The rule ignored fees sunk while an unsecured loan was outstanding.** I had written "cost since the last
+  repayment", so a guaranteed loan repaid just before the unsecured one in the same cycle never counted, and
+  the offer grew by 5% a cycle only (704 after 40 cycles). The cash-flow argument allows every cost to count
+  once; the right window is "since the last unsecured loan was made". That needs each promise's creation
+  time, which the log has and `rain.record.Entry` now carries.
+- **The newcomer's first guaranteed loan is now for the whole 10,000.** Splitting the need between the two
+  loans from the first cycle left the largest single repayment at 9,900, and the offer stopped there.
+  "Evidence" is the largest single promise kept, not the total carried at once; that is a limitation of the
+  rule as written.
+
+What this shows:
+
+- **A guarantor is a bridge, not a permanent crutch.** Under a guarantee the newcomer shows at once what they
+  can carry, and every loan sinks fees. The lender can turn both into unsecured credit at a rate no ring can
+  exploit. At a 1% fee and 5% interest it takes 44 loans; the guarantor's expected cost over that time is
+  3,176, against 3,937 for vouching for ever.
+- **The rule needs no trust and no belief.** It does not ask who the counterparties were. A ring is free to
+  manufacture any record; the record buys only as much credit as it cost. This is "fees as the cost of
+  faking" as a mechanism: the fee is what makes a record usable by a lender who knows nothing about anyone.
+- **Reputation gets a third job.** Beside a share of fees and a standing to lose, it is a receipt for sunk
+  cost: 0.025 of unsecured credit per point earned, from any lender who uses this rule.
+- **Trust is still faster.** A lender who knows the counterparties can use the record at face value. The rule
+  is the floor under that: what a record is worth to a stranger.
+- **All three parts of the rule are needed.** Each control drops one and is robbed.
+
+What it does not show: that lenders would choose to drop a guarantor (they take on the shock risk when they
+do); what happens when a ring values its dividends more than the lender assumes; or a version of "evidence"
+that adds up loans carried at once.
