@@ -106,7 +106,7 @@ What this shows:
   least they can charge is their own estimate of that chance. This is the sense in which vouching is evidence:
   the lender does not have to estimate how good the guarantor's judgement is, because the guarantor bears the
   cost of being wrong.
-- **Faking through a guarantee costs fifteen times more than a plain wash** (6.0% of the amount against
+- **Faking through a guarantee costs about ten times more than a plain wash** (6.0% of the amount against
   0.625%), because the loan is real and the bank is paid interest on it. It still pays against a bank that
   counts it.
 
