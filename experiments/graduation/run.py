@@ -153,7 +153,8 @@ def newcomer(with_guarantor, cycles=80):
                 eco.repay_loan(state[key])
                 state[key] = None
         own = min(NEED, rule_graduated(eco.log, "newcomer"))
-        rest = NEED - own if with_guarantor else 0.0
+        # The first guaranteed loan is for the whole amount, so that the record shows what they can carry.
+        rest = (NEED if t == 0 else NEED - own) if with_guarantor else 0.0
         state["offers"].append(own)
         state["guaranteed_amounts"].append(rest)
         state["own"] = bank_loan(eco, "newcomer", own)
