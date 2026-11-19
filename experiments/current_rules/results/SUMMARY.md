@@ -1,35 +1,35 @@
 # The first four experiments under the current rules: results
 
-Commit `514658d` (dirty: False), 2026-11-19T13:27:06+00:00.
+Commit `8770db0` (dirty: False), 2026-11-19T14:48:05+00:00.
 
 A point is worth v = 0.0150 DMD and costs 0.04 DMD.
 
 ## A. Largest safe loan
 
-Worst relative error, formula against simulation, over 16 grid points: 1.1e-04.
+Worst relative error, formula against simulation, over 16 grid points: 8.8e-06.
 
 | R | bond | sigma | P* formula | P* simulated | P* per point, in units of v |
 |---|---|---|---|---|---|
-| 500 | 100 | 0.0 | 2.893 | 2.893 | 0.386 |
-| 500 | 100 | 0.005 | 2.893 | 2.893 | 0.386 |
-| 500 | 100 | 0.02 | 2.893 | 2.893 | 0.386 |
-| 500 | 100 | 0.045 | 10.818 | 10.818 | 1.442 |
+| 500 | 100 | 0.0 | 1.464 | 1.464 | 0.195 |
+| 500 | 100 | 0.005 | 1.464 | 1.464 | 0.195 |
+| 500 | 100 | 0.02 | 1.464 | 1.464 | 0.195 |
+| 500 | 100 | 0.045 | 1.917 | 1.917 | 0.256 |
 | 500 | 500 | 0.0 | 7.179 | 7.179 | 0.957 |
 | 500 | 500 | 0.005 | 7.179 | 7.179 | 0.957 |
 | 500 | 500 | 0.02 | 9.649 | 9.649 | 1.286 |
-| 500 | 500 | 0.045 | 27.045 | 27.047 | 3.606 |
-| 5000 | 1000 | 0.0 | 15.773 | 15.774 | 0.210 |
-| 5000 | 1000 | 0.005 | 15.773 | 15.774 | 0.210 |
-| 5000 | 1000 | 0.02 | 21.227 | 21.227 | 0.283 |
-| 5000 | 1000 | 0.045 | 59.500 | 59.495 | 0.793 |
+| 500 | 500 | 0.045 | 27.045 | 27.045 | 3.606 |
+| 5000 | 1000 | 0.0 | 14.339 | 14.339 | 0.191 |
+| 5000 | 1000 | 0.005 | 14.339 | 14.339 | 0.191 |
+| 5000 | 1000 | 0.02 | 19.297 | 19.297 | 0.257 |
+| 5000 | 1000 | 0.045 | 54.091 | 54.090 | 0.721 |
 | 5000 | 5000 | 0.0 | 71.697 | 71.697 | 0.956 |
 | 5000 | 5000 | 0.005 | 71.697 | 71.697 | 0.956 |
 | 5000 | 5000 | 0.02 | 96.486 | 96.486 | 1.286 |
-| 5000 | 5000 | 0.045 | 270.453 | 270.449 | 3.606 |
+| 5000 | 5000 | 0.045 | 270.453 | 270.452 | 3.606 |
 
 - fees needed per unit of credit backed by a bond alone: 2.67 (i.e. 267 units of repaid loans at a 1% fee)
 - surplus per loan above which access to future credit counts: 0.6563% of the principal
-- the demo's second loan is 110 DMD; the largest safe loan for that borrower is 0.412 DMD (267 times smaller)
+- the demo's second loan is 110 DMD; the largest safe loan for that borrower is 0.323 DMD (341 times smaller)
 - control (worthless reputation): gain from defaulting P=1: +1.05, P=100: +105.00
 
 ## B. A lasting change in activity at cycle 300 (value of a point / its cost)

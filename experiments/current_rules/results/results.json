@@ -1,8 +1,8 @@
 {
  "provenance": {
-  "utc": "2026-11-19T13:27:06+00:00",
-  "commit": "514658d72559698767a697a76f8e038c2d9b6e84",
-  "commit_short": "514658d",
+  "utc": "2026-11-19T14:48:05+00:00",
+  "commit": "8770db0",
+  "commit_short": "8770db0",
   "dirty": false,
   "dirty_paths": "not recorded (stamp passed through the environment)",
   "branch": null,
@@ -24,45 +24,45 @@
     "reputation": 500,
     "bond": 100.0,
     "sigma": 0.0,
-    "formula": 2.8928571428571423,
-    "simulated": 2.892543247767833,
-    "relative_error": 0.00010850694445269027,
-    "per_point_in_v": 0.3857142857142857
+    "formula": 1.464285714285714,
+    "simulated": 1.4642845547114973,
+    "relative_error": 7.919043430760208e-07,
+    "per_point_in_v": 0.19523809523809524
    },
    {
     "reputation": 500,
     "bond": 100.0,
     "sigma": 0.005,
-    "formula": 2.8928571428571423,
-    "simulated": 2.892543247767833,
-    "relative_error": 0.00010850694445269027,
-    "per_point_in_v": 0.3857142857142857
+    "formula": 1.464285714285714,
+    "simulated": 1.4642845547114973,
+    "relative_error": 7.919043430760208e-07,
+    "per_point_in_v": 0.19523809523809524
    },
    {
     "reputation": 500,
     "bond": 100.0,
     "sigma": 0.02,
-    "formula": 2.8928571428571423,
-    "simulated": 2.892543247767833,
-    "relative_error": 0.00010850694445269027,
-    "per_point_in_v": 0.3857142857142857
+    "formula": 1.4642857142857142,
+    "simulated": 1.4642845547114973,
+    "relative_error": 7.919043432276609e-07,
+    "per_point_in_v": 0.19523809523809527
    },
    {
     "reputation": 500,
     "bond": 100.0,
     "sigma": 0.045,
-    "formula": 10.818120351588906,
-    "simulated": 10.817754836309405,
-    "relative_error": 3.378731864889574e-05,
-    "per_point_in_v": 1.442416046878521
+    "formula": 1.9166666666666627,
+    "simulated": 1.9166571845943565,
+    "relative_error": 4.947168159767836e-06,
+    "per_point_in_v": 0.25555555555555504
    },
    {
     "reputation": 500,
     "bond": 500.0,
     "sigma": 0.0,
     "formula": 7.178571428571428,
-    "simulated": 7.178606305803555,
-    "relative_error": 4.858519898323464e-06,
+    "simulated": 7.178568270201481,
+    "relative_error": 4.399719329028222e-07,
     "per_point_in_v": 0.9571428571428573
    },
    {
@@ -70,8 +70,8 @@
     "bond": 500.0,
     "sigma": 0.005,
     "formula": 7.178571428571428,
-    "simulated": 7.178606305803555,
-    "relative_error": 4.858519898323464e-06,
+    "simulated": 7.178568270201481,
+    "relative_error": 4.399719329028222e-07,
     "per_point_in_v": 0.9571428571428573
    },
    {
@@ -79,8 +79,8 @@
     "bond": 500.0,
     "sigma": 0.02,
     "formula": 9.648629090616707,
-    "simulated": 9.64896065848211,
-    "relative_error": 3.43642461835454e-05,
+    "simulated": 9.648624546992096,
+    "relative_error": 4.709088273684585e-07,
     "per_point_in_v": 1.2864838787488946
    },
    {
@@ -88,53 +88,53 @@
     "bond": 500.0,
     "sigma": 0.045,
     "formula": 27.04530087897222,
-    "simulated": 27.047235398065368,
-    "relative_error": 7.15288434691274e-05,
+    "simulated": 27.04528646648987,
+    "relative_error": 5.329015349163424e-07,
     "per_point_in_v": 3.6060401171962964
    },
    {
     "reputation": 5000,
     "bond": 1000.0,
     "sigma": 0.0,
-    "formula": 15.773436099659431,
-    "simulated": 15.773518880208258,
-    "relative_error": 5.248098657981383e-06,
-    "per_point_in_v": 0.21031248132879246
+    "formula": 14.339487363326757,
+    "simulated": 14.339373377096535,
+    "relative_error": 7.94911473008866e-06,
+    "per_point_in_v": 0.1911931648443568
    },
    {
     "reputation": 5000,
     "bond": 1000.0,
     "sigma": 0.005,
-    "formula": 15.773436099659431,
-    "simulated": 15.773518880208258,
-    "relative_error": 5.248098657981383e-06,
-    "per_point_in_v": 0.21031248132879246
+    "formula": 14.339487363326757,
+    "simulated": 14.339373377096535,
+    "relative_error": 7.94911473008866e-06,
+    "per_point_in_v": 0.1911931648443568
    },
    {
     "reputation": 5000,
     "bond": 1000.0,
     "sigma": 0.02,
-    "formula": 21.22698399935674,
-    "simulated": 21.226690383184632,
-    "relative_error": 1.3832213380713896e-05,
-    "per_point_in_v": 0.28302645332475657
+    "formula": 19.297258181233403,
+    "simulated": 19.297099336704832,
+    "relative_error": 8.231455840964413e-06,
+    "per_point_in_v": 0.25729677574977877
    },
    {
     "reputation": 5000,
     "bond": 1000.0,
     "sigma": 0.045,
-    "formula": 59.499661933738864,
-    "simulated": 59.49474516368991,
-    "relative_error": 8.263526025452096e-05,
-    "per_point_in_v": 0.793328825783185
+    "formula": 54.09060175794443,
+    "simulated": 54.090125762048956,
+    "relative_error": 8.799974117515695e-06,
+    "per_point_in_v": 0.7212080234392592
    },
    {
     "reputation": 5000,
     "bond": 5000.0,
     "sigma": 0.0,
     "formula": 71.69743681663434,
-    "simulated": 71.69706798735024,
-    "relative_error": 5.144246439972055e-06,
+    "simulated": 71.69712018836981,
+    "relative_error": 4.4161727195065155e-06,
     "per_point_in_v": 0.9559658242217912
    },
    {
@@ -142,8 +142,8 @@
     "bond": 5000.0,
     "sigma": 0.005,
     "formula": 71.69743681663351,
-    "simulated": 71.69706798735024,
-    "relative_error": 5.144246428476172e-06,
+    "simulated": 71.69712018836981,
+    "relative_error": 4.416172708010624e-06,
     "per_point_in_v": 0.9559658242217802
    },
    {
@@ -151,8 +151,8 @@
     "bond": 5000.0,
     "sigma": 0.02,
     "formula": 96.48629090616777,
-    "simulated": 96.4861769903273,
-    "relative_error": 1.1806427566314341e-06,
+    "simulated": 96.48583801335735,
+    "relative_error": 4.6938565692766236e-06,
     "per_point_in_v": 1.2864838787489037
    },
    {
@@ -160,8 +160,8 @@
     "bond": 5000.0,
     "sigma": 0.045,
     "formula": 270.4530087897287,
-    "simulated": 270.4489281063943,
-    "relative_error": 1.5088326628919999e-05,
+    "simulated": 270.4515942264334,
+    "relative_error": 5.23034778447257e-06,
     "per_point_in_v": 3.6060401171963834
    }
   ],
@@ -169,12 +169,12 @@
   "fees_per_unit_of_credit": 2.666666666666667,
   "repaid_volume_per_unit_of_credit": 266.6666666666667,
   "surplus_threshold": 0.006562500000000001,
-  "demo_safe_loan": 0.4124999999999999,
+  "demo_safe_loan": 0.32282608695652165,
   "demo_loan": 110,
-  "demo_oversize": 266.66666666666674,
+  "demo_oversize": 340.7407407407408,
   "control": {
-   "1": 1.050048828125,
-   "100": 105.0
+   "1": 1.0499988749439675,
+   "100": 104.99998817533475
   }
  },
  "B": {

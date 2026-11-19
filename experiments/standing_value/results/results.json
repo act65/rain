@@ -1,8 +1,8 @@
 {
  "provenance": {
-  "utc": "2026-11-19T13:27:53+00:00",
-  "commit": "514658d72559698767a697a76f8e038c2d9b6e84",
-  "commit_short": "514658d",
+  "utc": "2026-11-19T14:49:12+00:00",
+  "commit": "8770db0",
+  "commit_short": "8770db0",
   "dirty": false,
   "dirty_paths": "not recorded (stamp passed through the environment)",
   "branch": null,

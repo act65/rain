@@ -1,6 +1,6 @@
 # Sybil identities: results
 
-Commit `514658d` (dirty: False), 2026-11-19T13:25:26+00:00.
+Commit `8770db0` (dirty: False), 2026-11-19T14:49:13+00:00.
 
 ## Profit per 100-point identity (DMD), v = 0.3077
 

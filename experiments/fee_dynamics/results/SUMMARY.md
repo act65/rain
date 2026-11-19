@@ -1,6 +1,6 @@
 # Fee dynamics: results
 
-Commit `514658d` (dirty: False), 2026-11-19T13:25:26+00:00.
+Commit `8770db0` (dirty: False), 2026-11-19T14:49:03+00:00.
 
 | arm | c | fee exponent (fitted / predicted) | max value/fee | min value/fee | cycles where farming pays |
 |---|---|---|---|---|---|

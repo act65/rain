@@ -1,6 +1,6 @@
 # Default-rationality frontier: results
 
-Commit `514658d` (dirty: False), 2026-11-19T13:25:26+00:00.
+Commit `8770db0` (dirty: False), 2026-11-19T14:48:31+00:00.
 
 ## A. Formula against simulation
 

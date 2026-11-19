@@ -1,6 +1,6 @@
 # What a default really costs: results
 
-Commit `514658d` (dirty: False), 2026-11-19T13:27:53+00:00.
+Commit `8770db0` (dirty: False), 2026-11-19T14:49:12+00:00.
 
 Account against simulation (3% surplus): worst error 3.1e-03 of the amount kept, over 10 checks.
 
