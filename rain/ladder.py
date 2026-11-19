@@ -87,6 +87,65 @@ def feasible_band(interest_rate: float, surplus_rate: float, r: float, risk_tole
     return (k_min, k_max) if k_min <= k_max else None
 
 
+# --- The lender's side: what a relationship is worth, and what to risk on a stranger ---
+
+def repeat_value(interest_rate: float, shock_rate: float, r: float) -> float:
+    """
+    Present value to a lender, per unit of amount due, of lending the same amount every period
+    to a borrower known to repay it, until a shock ends the relationship (the principal is then lost).
+    """
+    per_loan = ((1 - shock_rate) * interest_rate - shock_rate) / (1 + interest_rate)
+    return per_loan / (1 - (1 - shock_rate) / (1 + r))
+
+
+def stranger_value(first_due: float, opportunist_share: float, floor: float, tail_index: float,
+                   interest_rate: float, shock_rate: float, r: float) -> dict:
+    """
+    What a lender expects from a stranger who is offered `first_due` and, if they repay, the same
+    again every period. A share `opportunist_share` of strangers take the first loan and vanish;
+    the rest have thresholds Pareto(floor, tail_index).
+
+    Returns `first_loan` (the expected profit of the first loan alone), `relationship` (the whole
+    present value) and `price_of_information` (what the first loan is expected to lose, if anything).
+    """
+    principal = first_due / (1 + interest_rate)
+    repay = (1 - shock_rate) * min(1.0, (floor / first_due) ** tail_index)
+    v = repeat_value(interest_rate, shock_rate, r)
+    genuine_first = repay * interest_rate * principal - (1 - repay) * principal
+    first = -opportunist_share * principal + (1 - opportunist_share) * genuine_first
+    relationship = first + (1 - opportunist_share) * repay * v * first_due / (1 + r)
+    return dict(first_loan=first, relationship=relationship, price_of_information=max(0.0, -first))
+
+
+def opportunist_share_bounds(interest_rate: float, shock_rate: float, r: float) -> tuple:
+    """
+    (lo, hi). With more than `lo` of strangers being opportunists a first loan loses money in
+    expectation; with more than `hi` it is not worth making even for the relationships it starts.
+    Between the two, the expected loss on the first loan is the price of learning who is genuine.
+    """
+    margin = (1 - shock_rate) * interest_rate - shock_rate
+    worth = repeat_value(interest_rate, shock_rate, r) * (1 + interest_rate)
+    return margin / (1 + margin), worth / (1 + worth)
+
+
+def growth_pays(tail_index: float, interest_rate: float, shock_rate: float, r: float) -> bool:
+    """
+    Whether a profit-maximising lender, far below what the borrower can use, raises the loan at all
+    after a repayment. Raising it risks the whole principal to learn whether the threshold is higher;
+    that pays only when thresholds are heavy-tailed enough: (1 - q)(1 - a)(1 + i)(1 + v / (1 + r)) > 1.
+    """
+    v = repeat_value(interest_rate, shock_rate, r)
+    return (1 - shock_rate) * (1 - tail_index) * (1 + interest_rate) * (1 + v / (1 + r)) > 1
+
+
+def identity_bound(identity_cost: float, fee_rate: float, interest_rate: float) -> float:
+    """
+    The largest first amount due at which taking it and vanishing does not pay for a new identity
+    that costs `identity_cost`: the principal, less the protocol fee, is no more than the identity.
+    """
+    return identity_cost / (1 / (1 + interest_rate) - fee_rate)
+
+
 def repayment_history(engine_contract, borrower: str, asset: str = None, from_block: int = 0, to_block: int = None) -> dict:
     """
     What the CalculusEngine's promise log says about `borrower` as a promisor:
