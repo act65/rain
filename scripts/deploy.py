@@ -1,37 +1,42 @@
-# File: scripts/01_deploy.py (Corrected for the Atomic Action Framework)
+# File: scripts/deploy.py
 
-from brownie import (
-    accounts,
-    CurrencyToken,
-    RainReputation,
-    ReputationClaimToken,
-    CalculusEngine,
-    ReputationUpdater,
-    Treasury,
-)
-from rain.utils import save_deployment_data # Updated import
+from ape import accounts, project
+
+from rain.utils import save_deployment_data
 
 # --- CONFIGURATION ---
-INITIAL_REPUTATION = 100 * (10**18)
-INITIAL_CURRENCY_MINT = 5000 * (10**18) # Assuming 18 decimals
+E18 = 10**18
+INITIAL_CURRENCY_MINT = 5000 * E18 # Assuming 18 decimals
 DEPLOYMENT_FILE = "deployment_addresses.json"
+PERIOD = 30 * 24 * 60 * 60 # 30 days in seconds
 
-# New configurations for the final architecture
-CALCULUS_ENGINE_FEE = 1 * (10**17) # 0.1 DMD (assuming 18 decimals)
-TREASURY_CLAIM_PERIOD = 30 * 24 * 60 * 60 # 30 days in seconds
+# Fees: 1% of the amount promised, at least 0.1 DMD.
+FEE_BPS = 100
+MIN_FEE = E18 // 10
+# Reputation costs 0.04 DMD of fees per point (so a 1 DMD fee earns 25 points).
+POINT_PRICE = 4 * E18 // 100
+# Reputation loses 3% every 30 days (a half-life of about two years).
+DECAY_PERIOD = PERIOD
+RETENTION_PER_PERIOD = 97 * E18 // 100
+# The Treasury pays fees out gradually: each dividend cycle shares out a fraction of its payout
+# fund equal to the reputation decay, one cycle per decay period. Dividends then follow fee
+# income at the speed the supply of reputation does, so a point is never worth more than it cost.
+RELEASE_PER_CYCLE = E18 - RETENTION_PER_PERIOD
+CYCLE_INTERVAL = DECAY_PERIOD
+TREASURY_CLAIM_PERIOD = PERIOD
 
 
 def main():
     """
-    Deploys all contracts for the Atomic Action Framework, configures their roles
-    and permissions, mints initial tokens, and saves addresses to a file.
+    Deploys all core contracts, configures their roles, mints initial tokens,
+    and saves addresses to a file.
     """
     # --- 1. SETUP ACCOUNTS ---
-    deployer = accounts[0]
-    alice = accounts[1]
-    bob = accounts[2]
-    charlie = accounts[3]
-    
+    deployer = accounts.test_accounts[0]
+    alice = accounts.test_accounts[1]
+    bob = accounts.test_accounts[2]
+    charlie = accounts.test_accounts[3]
+
     print(f"Deployer: {deployer.address}")
     print(f"Alice: {alice.address}")
     print(f"Bob: {bob.address}")
@@ -39,79 +44,63 @@ def main():
 
     # --- 2. DEPLOY CORE CONTRACTS ---
     print("Deploying core contracts...")
-    currency_token = CurrencyToken.deploy({"from": deployer})
+    currency_token = project.CurrencyToken.deploy(sender=deployer)
     print(f"CurrencyToken (DMD) deployed at: {currency_token.address}")
 
-    rain_reputation = RainReputation.deploy({"from": deployer})
+    treasury = project.Treasury.deploy(
+        currency_token.address, TREASURY_CLAIM_PERIOD, RELEASE_PER_CYCLE, CYCLE_INTERVAL, sender=deployer
+    )
+    print(f"Treasury deployed at: {treasury.address}")
+
+    rain_reputation = project.RainReputation.deploy(DECAY_PERIOD, RETENTION_PER_PERIOD, sender=deployer)
     print(f"RainReputation (RAIN) deployed at: {rain_reputation.address}")
 
     # --- 3. DEPLOY PRIMITIVE & ENGINE CONTRACTS ---
     print("\nDeploying protocol engine contracts...")
-    rct_contract = ReputationClaimToken.deploy(rain_reputation.address, {"from": deployer})
-    print(f"ReputationClaimToken (RCT) deployed at: {rct_contract.address}")
-
-    treasury = Treasury.deploy(currency_token.address, TREASURY_CLAIM_PERIOD, {"from": deployer})
-    print(f"Treasury deployed at: {treasury.address}")
-
-    calculus_engine = CalculusEngine.deploy(
-        currency_token.address,
-        treasury.address,
-        CALCULUS_ENGINE_FEE,
-        {"from": deployer},
+    calculus_engine = project.CalculusEngine.deploy(
+        currency_token.address, treasury.address, FEE_BPS, MIN_FEE, POINT_PRICE, sender=deployer
     )
     print(f"CalculusEngine deployed at: {calculus_engine.address}")
 
-    reputation_updater = ReputationUpdater.deploy(rain_reputation.address, {"from": deployer})
+    rct_contract = project.ReputationClaimToken.deploy(
+        rain_reputation.address, calculus_engine.address, sender=deployer
+    )
+    print(f"ReputationClaimToken (RCT) deployed at: {rct_contract.address}")
+
+    reputation_updater = project.ReputationUpdater.deploy(rain_reputation.address, sender=deployer)
     print(f"ReputationUpdater deployed at: {reputation_updater.address}\n")
 
     # --- 4. CONFIGURE ROLES AND PERMISSIONS ---
     print("Configuring contract roles and permissions...")
 
     # Grant ReputationUpdater the right to update scores in RainReputation
-    updater_role = rain_reputation.UPDATER_ROLE()
-    rain_reputation.grantRole(updater_role, reputation_updater.address, {"from": deployer})
-    print(f" - Granted UPDATER_ROLE on RainReputation to ReputationUpdater.")
+    rain_reputation.grantRole(rain_reputation.UPDATER_ROLE(), reputation_updater.address, sender=deployer)
+    print(" - Granted UPDATER_ROLE on RainReputation to ReputationUpdater.")
 
     # Set the RCT contract address in RainReputation so it can set delinquent status
-    rain_reputation.setRctContract(rct_contract.address, {"from": deployer})
-    print(f" - Set RCT contract address in RainReputation.")
+    rain_reputation.setRctContract(rct_contract.address, sender=deployer)
+    print(" - Set RCT contract address in RainReputation.")
 
-    # For simulation, grant the deployer account roles that would normally belong
-    # to scripts or specialized bots.
-    
-    # Grant deployer the right to create sessions in CalculusEngine (acting as a script)
-    session_creator_role = calculus_engine.SESSION_CREATOR_ROLE()
-    calculus_engine.grantRole(session_creator_role, deployer.address, {"from": deployer})
-    print(f" - Granted SESSION_CREATOR_ROLE on CalculusEngine to deployer (for simulation).")
+    # For simulation, the deployer account plays the roles that would normally
+    # belong to specialized bots (the oracle and the treasury manager).
+    # Scripts need no role: anyone can deploy one.
 
     # Grant deployer the right to call the ReputationUpdater (acting as the oracle)
-    updater_role_on_updater = reputation_updater.UPDATER_ROLE()
-    reputation_updater.grantRole(updater_role_on_updater, deployer.address, {"from": deployer})
-    print(f" - Granted UPDATER_ROLE on ReputationUpdater to deployer (for simulation).")
-    
-    # Grant deployer the right to manage the Treasury
-    manager_role = treasury.MANAGER_ROLE()
-    treasury.grantRole(manager_role, deployer.address, {"from": deployer})
-    print(f" - Granted MANAGER_ROLE on Treasury to deployer.")
+    reputation_updater.grantRole(reputation_updater.UPDATER_ROLE(), deployer.address, sender=deployer)
+    print(" - Granted UPDATER_ROLE on ReputationUpdater to deployer (for simulation).")
 
-    # Grant deployer the right to mint RCTs (acting as a LoanScript)
-    minter_role = rct_contract.MINTER_ROLE()
-    rct_contract.grantRole(minter_role, deployer.address, {"from": deployer})
-    print(f" - Granted MINTER_ROLE on ReputationClaimToken to deployer (for simulation).")
-
+    # The deployer already manages the Treasury (the constructor grants MANAGER_ROLE).
     print("\nPermissions and roles configured successfully.\n")
 
     # --- 5. MINT INITIAL ASSETS FOR USERS ---
     print("Minting initial assets for Alice, Bob, and Charlie...")
     users = {"Alice": alice, "Bob": bob, "Charlie": charlie}
     for name, account in users.items():
-        # Mint Currency Tokens
-        currency_token.mint(account.address, INITIAL_CURRENCY_MINT, {"from": deployer})
+        currency_token.mint(account.address, INITIAL_CURRENCY_MINT, sender=deployer)
 
-        # Mint Reputation SBTs and set initial score
-        rep = INITIAL_REPUTATION * 2 if name == "Alice" else INITIAL_REPUTATION
-        rain_reputation.mint(account.address, rep, {"from": deployer})
-        print(f"  - Minted assets for {name} ({account.address}): {INITIAL_CURRENCY_MINT / 10**18} DMD, {rep / 10**18} RAIN.")
+        # Issue the identity token. A new identity holds no reputation: it is earned by keeping promises.
+        rain_reputation.mint(account.address, sender=deployer)
+        print(f"  - Minted for {name} ({account.address}): {INITIAL_CURRENCY_MINT / 10**18} DMD and an identity.")
 
     # --- 6. SAVE DEPLOYMENT ADDRESSES ---
     print(f"\nSaving deployment addresses to {DEPLOYMENT_FILE}...")
@@ -123,6 +112,6 @@ def main():
         "ReputationUpdater": reputation_updater.address,
         "Treasury": treasury.address,
     }
-    save_deployment_data(deployment_data, DEPLOYMENT_FILE) # Use the utility function
+    save_deployment_data(deployment_data, DEPLOYMENT_FILE)
 
     print("\nDeployment and setup complete!")

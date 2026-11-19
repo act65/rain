@@ -1,69 +1,25 @@
-# Use a single stage for simplicity in a dev environment
-FROM python:3.9-slim
+# A reproducible environment for compiling the contracts and running the tests.
+# No external blockchain node is needed: Ape runs a local chain in-process.
+FROM python:3.12-slim
 
-# -----------------------------------------------------------------------------
-# 1. Install System Dependencies & Global Tools (Least Frequent Changes)
-#    This layer is cached unless you change these commands.
-# -----------------------------------------------------------------------------
-USER root
-RUN apt-get update && \
-    apt-get install -y curl gnupg && \
-    # Install Node.js
-    curl -fsSL https://deb.nodesource.com/setup_18.x | bash - && \
-    apt-get install -y nodejs && \
-    # Install ganache-cli globally
-    npm install -g ganache-cli && \
-    # Clean up
-    apt-get clean && \
-    rm -rf /var/lib/apt/lists/*
+COPY --from=ghcr.io/astral-sh/uv:latest /uv /usr/local/bin/uv
 
-# -----------------------------------------------------------------------------
-# 2. Install Python Dependencies (Changes only when requirements.txt changes)
-# -----------------------------------------------------------------------------
 RUN useradd -ms /bin/bash appuser
 USER appuser
 WORKDIR /home/appuser/app
 
-# Set PATH to include user's local bin directory
-ENV PATH="/home/appuser/.local/bin:${PATH}"
-
-# Copy only the requirements file first
-COPY --chown=appuser:appuser requirements.txt .
-
-# Install dependencies. This layer will be cached as long as requirements.txt is unchanged.
-RUN pip install --no-cache-dir --user -r requirements.txt
-
-# -----------------------------------------------------------------------------
-# 3. Compile Contracts & Dependencies (Changes only when contracts change)
-#    This is the key change. We compile here to cache the solc download.
-# -----------------------------------------------------------------------------
-# Copy config and contracts needed for compilation
-COPY --chown=appuser:appuser brownie-config.yaml .
-COPY --chown=appuser:appuser contracts/ ./contracts
-
-# Run compile. Brownie will download solc the first time and cache it in this layer.
-# Subsequent builds will reuse this layer if the contracts haven't changed.
-RUN brownie compile
-
-# -----------------------------------------------------------------------------
-# 3.5. Install local `rain` library
-# -----------------------------------------------------------------------------
-# Copy the rain library code and its setup file
-COPY --chown=appuser:appuser setup.py .
+# 1. Python dependencies (cached unless pyproject.toml / uv.lock change)
+COPY --chown=appuser:appuser pyproject.toml uv.lock README.md ./
 COPY --chown=appuser:appuser rain/ ./rain
+RUN uv sync --frozen
 
-# Install the rain library. This allows scripts and tests to import it.
-# Using "." because setup.py is in the current WORKDIR /home/appuser/app
-RUN pip install --no-cache-dir --user .
+# 2. Compile the contracts (cached unless they change). This also downloads the
+#    Solidity compiler and the OpenZeppelin dependency into the image.
+COPY --chown=appuser:appuser ape-config.yaml .
+COPY --chown=appuser:appuser contracts/ ./contracts
+RUN uv run ape compile
 
-# -----------------------------------------------------------------------------
-# 4. Copy Remaining Application Code (Most Frequent Changes)
-#    Copying tests and scripts last, as they change most often.
-# -----------------------------------------------------------------------------
+# 3. Everything else (tests and scripts change most often)
 COPY --chown=appuser:appuser . .
 
-# Expose Ganache port
-EXPOSE 8545
-
-# Keep container running for exec
-CMD ["tail", "-f", "/dev/null"]
+CMD ["uv", "run", "ape", "test"]

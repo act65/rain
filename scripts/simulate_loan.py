@@ -1,170 +1,132 @@
-from brownie import (
-    accounts,
-    chain,
-    LoanScript,
-    CalculusEngine,
-    CurrencyToken,
-    RainReputation,
-    ReputationClaimToken,
-)
-from rain.utils import load_deployment_data
-import time
+# File: scripts/simulate_loan.py
+
+from ape import accounts, chain, project
+
+from rain.utils import expect_revert, load_deployment_data
+from scripts import run_reputation_oracle as oracle_script
 
 DEPLOYMENT_FILE = "deployment_addresses.json"
 
+
 def main():
     """
-    Simulates the full loan cycle:
-    1. Happy Path: A successful loan request, funding, and repayment.
-    2. Unhappy Path: A loan default, resulting in an RCT mint.
-    3. Resolution Path: The settlement of the debt, burning of the RCT, and release of the stake.
+    Simulates the loan lifecycle on a ladder, starting from identities with no reputation:
+    1. First rung: Bob and Charlie each take a small loan with no bond, and repay it.
+       The oracle then credits the reputation they earned (in proportion to the fee paid).
+    2. Second rung: Charlie bonds some of that reputation against a larger loan and defaults.
+       The bond is destroyed and Alice receives a claim (RCT).
+    3. Resolution: Charlie settles, burns the RCT, and is no longer delinquent.
     """
     print("--- LOAN SIMULATION (FULL LIFECYCLE) ---")
 
     # --- 1. SETUP ---
     print("\n--- Phase 1: Setup ---")
-    # Load accounts
-    deployer = accounts[0]
-    alice = accounts[1] # Lender
-    bob = accounts[2]   # Borrower (Happy Path)
-    charlie = accounts[3] # Borrower (Unhappy & Resolution Path)
+    deployer = accounts.test_accounts[0]
+    alice = accounts.test_accounts[1] # Lender
+    bob = accounts.test_accounts[2]   # Borrower who repays
+    charlie = accounts.test_accounts[3] # Borrower who later defaults
 
-    # Load contract addresses
     addresses = load_deployment_data(DEPLOYMENT_FILE)
     if not addresses:
-        print("Failed to load deployment addresses. Exiting.")
-        return
+        raise RuntimeError("Could not load deployment addresses. Run scripts/deploy.py first.")
 
-    print("\n--- Phase 1: Setup ---")
-    # Create contract objects
-    calculus_engine = CalculusEngine.at(addresses["CalculusEngine"])
-    currency_token = CurrencyToken.at(addresses["CurrencyToken"])
-    rain_reputation = RainReputation.at(addresses["RainReputation"])
-    rct_contract = ReputationClaimToken.at(addresses["ReputationClaimToken"])
+    calculus_engine = project.CalculusEngine.at(addresses["CalculusEngine"])
+    currency_token = project.CurrencyToken.at(addresses["CurrencyToken"])
+    rain_reputation = project.RainReputation.at(addresses["RainReputation"])
+    rct_contract = project.ReputationClaimToken.at(addresses["ReputationClaimToken"])
 
-    # Deploy the LoanScript application
     print("Deploying the LoanScript application...")
-    loan_script = LoanScript.deploy(
+    loan_script = project.LoanScript.deploy(
         calculus_engine.address,
         rain_reputation.address,
         rct_contract.address,
         currency_token.address,
-        {"from": deployer},
+        sender=deployer,
     )
     print(f"LoanScript deployed at: {loan_script.address}")
 
-    # Grant the LoanScript permission to mint RCTs on default
-    minter_role = rct_contract.MINTER_ROLE()
-    rct_contract.grantRole(minter_role, loan_script.address, {"from": deployer})
-    print("Granted MINTER_ROLE to LoanScript.")
+    # Scripts need no role from the protocol. Instead, each user grants this script
+    # exactly the powers it needs over them.
+    max_uint = 2**256 - 1
+    e18 = 10**18
+    duration_seconds = 60 * 60 * 24 * 20 # 20 days
+    first_principal, first_interest = 100 * e18, 5 * e18
+    second_principal, second_interest = 110 * e18, 5 * e18
+    reputation_stake = 20 * e18
 
-    # Grant the LoanScript permission to create sessions in the CalculusEngine
-    print("Granting SESSION_CREATOR_ROLE to LoanScript...")
-    session_creator_role = calculus_engine.SESSION_CREATOR_ROLE()
-    calculus_engine.grantRole(session_creator_role, loan_script.address, {"from": deployer})
-    print("Granted SESSION_CREATOR_ROLE to LoanScript.")
+    print("\nUsers grant the LoanScript its permissions...")
+    for user in (alice, bob, charlie):
+        # The engine is the contract that actually moves tokens
+        currency_token.approve(calculus_engine.address, max_uint, sender=user)
+    # Alice lends: the script may move the principals she is prepared to lend
+    calculus_engine.approveScript(loan_script.address, currency_token.address, 1000 * e18, sender=alice)
+    for borrower in (bob, charlie):
+        # The script may make promises in the borrower's name...
+        calculus_engine.setScriptAuthorization(loan_script.address, True, sender=borrower)
+        # ...move the protocol fees and the repayments...
+        calculus_engine.approveScript(loan_script.address, currency_token.address, 1000 * e18, sender=borrower)
+        # ...and bond (and, on default, destroy) this much of their reputation.
+        rain_reputation.approveStake(loan_script.address, reputation_stake, sender=borrower)
 
-    # --- 2. HAPPY PATH SIMULATION: Bob borrows from Alice ---
-    print("\n\n--- Phase 2: Happy Path (Bob borrows from Alice) ---")
-    principal = 1000 * (10**18)
-    interest = 50 * (10**18)
-    duration_seconds = 60 * 60 * 24 * 30 # 30 days
-    reputation_stake = 50 * (10**18)
+    # --- 2. FIRST RUNG: small unbonded loans, repaid ---
+    print("\n\n--- Phase 2: First rung (no reputation yet, so no bond) ---")
+    for name, borrower in (("Bob", bob), ("Charlie", charlie)):
+        balance = currency_token.balanceOf(borrower)
+        loan_script.requestLoan(alice.address, first_principal, first_interest, duration_seconds, 0, sender=borrower)
+        loan_id = loan_script.loanCount()
+        loan_script.fundLoan(loan_id, sender=alice)  # the promise is recorded and the borrower pays the fee
+        loan_script.repayLoan(loan_id, sender=borrower)
+        fee = calculus_engine.promises(loan_script.loans(loan_id).promiseId).feePaid
+        print(f"  - {name} borrowed {first_principal / e18} DMD and repaid it. Fee paid: {fee / e18} DMD; "
+              f"total cost {(balance - currency_token.balanceOf(borrower)) / e18} DMD.")
+        assert rain_reputation.reputationScores(borrower) == 0  # until the oracle runs
 
-    print(f"Initial Reputation - Bob: {rain_reputation.reputationScores(bob) / 10**18}")
-    print(f"Initial Balance - Alice: {currency_token.balanceOf(alice) / 10**18}, Bob: {currency_token.balanceOf(bob) / 10**18}")
+    print("\nThe oracle processes the promise log...")
+    oracle_script.main()
+    for name, borrower in (("Bob", bob), ("Charlie", charlie)):
+        print(f"  - {name}'s reputation: {rain_reputation.reputationScores(borrower) / e18}")
+    earned = rain_reputation.reputationScores(charlie)
+    assert earned > reputation_stake
 
-    print("\nStep A-pre: Bob approves the protocol fee...")
-    protocol_fee = calculus_engine.protocolFee()
-    currency_token.approve(calculus_engine.address, protocol_fee, {"from": bob})
-    print(f"  - Bob approved CalculusEngine to spend {protocol_fee / 10**18} for the protocol fee.")
-
-    print("\nStep A: Bob requests a loan...")
-    tx_req = loan_script.requestLoan(alice.address, principal, interest, duration_seconds, reputation_stake, {"from": bob})
-    loan_id = tx_req.events["LoanRequested"]["loanId"]
-    print(f"  - Loan {loan_id} requested. Bob's Staked Reputation: {rain_reputation.stakedReputation(bob) / 10**18}")
-
-    print("\nStep B: Alice funds the loan...")
-    currency_token.approve(calculus_engine.address, principal, {"from": alice})
-    loan_script.fundLoan(loan_id, {"from": alice})
-    print(f"  - Loan funded. Balances: Alice={currency_token.balanceOf(alice) / 10**18}, Bob={currency_token.balanceOf(bob) / 10**18}")
-
-    print("\nStep C: Bob repays the loan...")
-    repayment_amount = principal + interest
-    currency_token.approve(calculus_engine.address, repayment_amount, {"from": bob})
-    loan_script.repayLoan(loan_id, {"from": bob})
-    print("  - Loan repaid.")
-
-    print("\nHappy Path Final State:")
-    print(f"  - Bob's Staked Reputation: {rain_reputation.stakedReputation(bob) / 10**18} (should be 0)")
-    print(f"  - Final Balances: Alice={currency_token.balanceOf(alice) / 10**18}, Bob={currency_token.balanceOf(bob) / 10**18}")
-
-    # --- 3. UNHAPPY PATH SIMULATION: Charlie borrows from Alice and defaults ---
-    print("\n\n--- Phase 3: Unhappy Path (Charlie borrows from Alice) ---")
-    print(f"Initial Reputation - Charlie: {rain_reputation.reputationScores(charlie) / 10**18}")
-
-    print("\nStep A-pre: Charlie approves the protocol fee...")
-    # We can re-use the protocol_fee variable from above
-    currency_token.approve(calculus_engine.address, protocol_fee, {"from": charlie})
-    print(f"  - Charlie approved CalculusEngine to spend {protocol_fee / 10**18} for the protocol fee.")
-
-    print("\nStep A: Charlie requests a loan...")
-    tx_req_def = loan_script.requestLoan(alice.address, principal, interest, duration_seconds, reputation_stake, {"from": charlie})
-    default_loan_id = tx_req_def.events["LoanRequested"]["loanId"]
-    print(f"  - Loan {default_loan_id} requested. Charlie's staked reputation: {rain_reputation.stakedReputation(charlie) / 10**18}")
-
-    print("\nStep B: Alice funds the loan...")
-    currency_token.approve(calculus_engine.address, principal, {"from": alice})
-    loan_script.fundLoan(default_loan_id, {"from": alice})
+    # --- 3. SECOND RUNG: Charlie bonds reputation, borrows more, and defaults ---
+    print("\n\n--- Phase 3: Second rung (Charlie bonds reputation, then defaults) ---")
+    loan_script.requestLoan(alice.address, second_principal, second_interest, duration_seconds, reputation_stake, sender=charlie)
+    default_loan_id = loan_script.loanCount()
+    print(f"  - Loan {default_loan_id} requested. Charlie's staked reputation: {rain_reputation.stakedReputation(charlie) / e18}")
+    loan_script.fundLoan(default_loan_id, sender=alice)
     print("  - Loan funded.")
 
-    print("\nStep C: Simulating time passing beyond the deadline...")
-    chain.sleep(duration_seconds + 1)
+    print("\nSimulating time passing beyond the deadline...")
+    chain.pending_timestamp += duration_seconds + 1
     chain.mine()
-    print("  - Time elapsed.")
 
-    print("\nStep D: Alice claims the default...")
-    tx_def = loan_script.claimDefault(default_loan_id, {"from": alice})
-    rct_id = tx_def.events["LoanDefaulted"]["rctId"]
-    print(f"  - Default claimed. RCT with ID {rct_id} was minted to Alice.")
+    print("\nAlice claims the default...")
+    loan_script.claimDefault(default_loan_id, sender=alice)
+    rct_id = rct_contract.claimForPromise(loan_script.loans(default_loan_id).promiseId)
+    print(f"  - Default claimed. RCT with ID {rct_id} was minted to Alice for {rct_contract.claims(rct_id).shortfallAmount / e18} DMD.")
     print(f"  - Charlie's Delinquent Status: {rain_reputation.isDelinquent(charlie)}")
+    print(f"  - Charlie's Reputation: {rain_reputation.reputationScores(charlie) / e18} (his bond was forfeited)")
     assert rct_contract.ownerOf(rct_id) == alice.address
     assert rain_reputation.isDelinquent(charlie) == True
-
+    assert rain_reputation.reputationScores(charlie) == earned - reputation_stake
+    assert rain_reputation.stakedReputation(charlie) == 0
 
     # --- 4. DEBT RESOLUTION PATH: Charlie settles his debt ---
     print("\n\n--- Phase 4: Debt Resolution Path (Charlie settles with Alice) ---")
     print("This simulates an off-chain settlement where Charlie pays Alice, and she gives him the RCT.")
-
-    print(f"\nStep A: Alice transfers the RCT to Charlie...")
-    rct_contract.transferFrom(alice.address, charlie.address, rct_id, {"from": alice})
-    print(f"  - RCT {rct_id} is now owned by Charlie.")
+    rct_contract.transferFrom(alice.address, charlie.address, rct_id, sender=alice)
     assert rct_contract.ownerOf(rct_id) == charlie.address
-
-    print("\nStep B-pre: Charlie approves the LoanScript to burn the RCT...")
-    rct_contract.approve(loan_script.address, rct_id, {"from": charlie})
-    print(f"  - Charlie approved LoanScript to manage RCT {rct_id}.")
-
-    print("\nStep B: Charlie resolves the default using the LoanScript...")
-    # This assumes your LoanScript has the new `resolveDefault` function.
-    loan_script.resolveDefault(rct_id, {"from": charlie})
-    print("  - `resolveDefault` called successfully.")
+    rct_contract.approve(loan_script.address, rct_id, sender=charlie)
+    loan_script.resolveDefault(rct_id, sender=charlie)
 
     print("\nResolution Path Final State:")
-    print(f"  - Charlie's Staked Reputation: {rain_reputation.stakedReputation(charlie) / 10**18} (should be 0)")
     print(f"  - Charlie's Delinquent Status: {rain_reputation.isDelinquent(charlie)} (should be False)")
-    
-    # Verify the RCT was burned
-    try:
-        rct_contract.ownerOf(rct_id)
-        # If this line is reached, the test fails because the token still exists.
-        assert False, "RCT was not burned!"
-    except Exception as e:
-        # We expect an exception because the token is burned.
-        print(f"  - VERIFIED: RCT {rct_id} has been burned.")
+    print(f"  - Charlie's Reputation: {rain_reputation.reputationScores(charlie) / e18} (the forfeited bond is not returned)")
 
-    assert rain_reputation.stakedReputation(charlie) == 0
+    expect_revert(lambda: rct_contract.ownerOf(rct_id), "invalid token ID")
+    print(f"  - VERIFIED: RCT {rct_id} has been burned.")
     assert rain_reputation.isDelinquent(charlie) == False
-    print("  - VERIFIED: Charlie's stake was released and his delinquent status was cleared.")
+    assert rain_reputation.reputationScores(charlie) == earned - reputation_stake
+    print("  - VERIFIED: Charlie's delinquent status was cleared.")
 
     print("\n\n--- SIMULATION COMPLETE ---")

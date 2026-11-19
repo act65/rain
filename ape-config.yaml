@@ -1,0 +1,14 @@
+name: rain
+
+plugins:
+  - name: solidity
+
+dependencies:
+  - name: openzeppelin
+    github: OpenZeppelin/openzeppelin-contracts
+    version: 4.8.0
+
+solidity:
+  version: 0.8.19
+  import_remapping:
+    - "@openzeppelin=openzeppelin/4.8.0"

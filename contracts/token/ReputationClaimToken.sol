@@ -1,40 +1,43 @@
-// File: contracts/token/ReputationClaimToken.sol (Final, Secure Version with Default Resolution)
+// File: contracts/token/ReputationClaimToken.sol
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.0;
 
 import "@openzeppelin/contracts/token/ERC721/ERC721.sol";
-import "@openzeppelin/contracts/access/AccessControl.sol";
 import "@openzeppelin/contracts/utils/Counters.sol";
 
-// Interface for the RainReputation contract
 interface IRainReputation {
     function setDelinquentStatus(address user, bool status) external;
+}
+
+interface ICalculusEngineLog {
+    function promises(uint256 promiseId) external view returns (uint256 actionId, address promisor, address promisee, address asset, uint256 amount, uint256 deadline, uint8 status, uint256 feePaid);
+    function actions(uint256 actionId) external view returns (address user, address script);
 }
 
 /**
  * @title ReputationClaimToken
  * @author Rain Protocol
- * @dev An ERC721 token representing a debt claim. This version has been updated to
- * support the full default resolution lifecycle.
+ * @dev An ERC721 token representing a claim on a defaulted promise.
  *
- * Key Changes:
- * 1. The `mint` function now stores the `promiseId` of the broken promise, creating a
- *    permanent on-chain link between the debt and its origin.
- * 2. The `burn` function now correctly checks for ownership OR approval, allowing a
- *    script contract to burn the token on behalf of the owner.
+ * Minting needs no role. An RCT can only be minted for a promise that the
+ * CalculusEngine records as Defaulted, only by the script that owns that promise,
+ * and only once. Every field of the claim is read from the engine's log, so a
+ * script cannot make an innocent user delinquent or overstate a debt.
+ *
+ * While a user has at least one outstanding RCT against them they are delinquent.
  */
-contract ReputationClaimToken is ERC721, AccessControl {
+contract ReputationClaimToken is ERC721 {
     using Counters for Counters.Counter;
     Counters.Counter private _tokenIds;
 
-    bytes32 public constant MINTER_ROLE = keccak256("MINTER_ROLE");
+    uint8 private constant STATUS_DEFAULTED = 2; // CalculusEngine.PromiseStatus.Defaulted
 
     IRainReputation public immutable rainReputation;
+    ICalculusEngineLog public immutable calculusEngine;
 
-    // State variable to track outstanding debts per user
+    // Outstanding debts per user
     mapping(address => uint256) public debtCount;
 
-    // Updated struct to include the originating promiseId
     struct DebtClaim {
         uint256 promiseId;
         address defaulterAddress;
@@ -44,35 +47,30 @@ contract ReputationClaimToken is ERC721, AccessControl {
         address loanContractAddress;
     }
     mapping(uint256 => DebtClaim) public claims;
+    // promiseId => the RCT minted for it (kept after the RCT is burned, so it cannot be minted twice)
+    mapping(uint256 => uint256) public claimForPromise;
 
     event ClaimMinted(uint256 indexed tokenId, address indexed defaulter, address indexed originalLender, uint256 shortfallAmount);
     event ClaimBurned(uint256 indexed tokenId, address indexed burner);
 
-    constructor(address _rainReputationAddress) ERC721("Rain Reputation Claim", "RCT") {
-        _grantRole(DEFAULT_ADMIN_ROLE, msg.sender);
+    constructor(address _rainReputationAddress, address _calculusEngineAddress) ERC721("Rain Reputation Claim", "RCT") {
         rainReputation = IRainReputation(_rainReputationAddress);
+        calculusEngine = ICalculusEngineLog(_calculusEngineAddress);
     }
 
     /**
-     * @notice Mints a new RCT, linking it to the specific promise that was defaulted on.
-     * @dev If this is the user's first outstanding debt, it atomically sets their status to delinquent.
-     * @param promiseId The ID of the promise from the CalculusEngine that was broken.
-     * @param defaulter The address of the user who broke the promise.
-     * @param originalLender The address of the user to whom the promise was made.
-     * @param shortfallAmount The value of the default.
-     * @param loanContract The address of the script that witnessed the default.
+     * @notice Mints the RCT for a defaulted promise to its promisee.
+     * @dev If this is the promisor's first outstanding debt, it atomically marks them delinquent.
+     * @param promiseId The defaulted promise in the CalculusEngine.
      * @return The ID of the newly minted RCT.
      */
-    function mint(
-        uint256 promiseId,
-        address defaulter,
-        address originalLender,
-        uint256 shortfallAmount,
-        address loanContract
-    ) external returns (uint256) {
-        require(hasRole(MINTER_ROLE, msg.sender), "RCT: Caller is not a minter");
+    function mint(uint256 promiseId) external returns (uint256) {
+        (uint256 actionId, address defaulter, address lender, , uint256 amount, , uint8 status, ) = calculusEngine.promises(promiseId);
+        require(status == STATUS_DEFAULTED, "RCT: Promise is not defaulted");
+        (, address script) = calculusEngine.actions(actionId);
+        require(script == msg.sender, "RCT: Caller is not the script for this promise");
+        require(claimForPromise[promiseId] == 0, "RCT: Claim already minted for this promise");
 
-        // Lock on first offense
         if (debtCount[defaulter] == 0) {
             rainReputation.setDelinquentStatus(defaulter, true);
         }
@@ -80,50 +78,41 @@ contract ReputationClaimToken is ERC721, AccessControl {
 
         _tokenIds.increment();
         uint256 newItemId = _tokenIds.current();
+        claimForPromise[promiseId] = newItemId;
 
         claims[newItemId] = DebtClaim({
             promiseId: promiseId,
             defaulterAddress: defaulter,
-            originalLenderAddress: originalLender,
-            shortfallAmount: shortfallAmount,
+            originalLenderAddress: lender,
+            shortfallAmount: amount,
             defaultTimestamp: block.timestamp,
-            loanContractAddress: loanContract
+            loanContractAddress: msg.sender
         });
 
-        _safeMint(originalLender, newItemId);
-        emit ClaimMinted(newItemId, defaulter, originalLender, shortfallAmount);
+        // _mint rather than _safeMint: a promisee that cannot receive NFTs must not block the default.
+        _mint(lender, newItemId);
+        emit ClaimMinted(newItemId, defaulter, lender, amount);
         return newItemId;
     }
 
     /**
     * @notice Burns an RCT. Can only be called by the owner of the token OR an approved address.
-    * @dev This is a critical step in the debt resolution process. A defaulter must
-    * re-acquire their RCT and approve a script to call this function to clear their name.
-    * If this is their last outstanding debt, it atomically clears their delinquent status.
-    * @param tokenId The ID of the token to burn.
+    * @dev Burning is the proof of settlement (or forgiveness). If this is the defaulter's
+    * last outstanding debt, it atomically clears their delinquent status.
     */
     function burn(uint256 tokenId) public virtual {
-        // CORRECTED CHECK: Use the internal OpenZeppelin function to verify ownership or approval.
-        // This allows a contract that has been approved (like LoanScript) to burn the token.
         require(_isApprovedOrOwner(msg.sender, tokenId), "ERC721: burn caller is not owner nor approved");
 
         address defaulter = claims[tokenId].defaulterAddress;
-        require(debtCount[defaulter] > 0, "Cannot decrement debt count below zero");
 
-        // It's crucial to call _burn before updating state to prevent re-entrancy attacks.
         _burn(tokenId);
         delete claims[tokenId];
 
-        // Unlock when debt count reaches zero
         debtCount[defaulter]--;
         if (debtCount[defaulter] == 0) {
             rainReputation.setDelinquentStatus(defaulter, false);
         }
 
         emit ClaimBurned(tokenId, msg.sender);
-    }
-
-    function supportsInterface(bytes4 interfaceId) public view virtual override(ERC721, AccessControl) returns (bool) {
-        return super.supportsInterface(interfaceId);
     }
 }

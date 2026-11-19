@@ -20,6 +20,9 @@ env/
 # Node
 node_modules/
 
-# Brownie
+# Build output
 build/
 reports/
+.build/
+contracts/.cache/
+old/

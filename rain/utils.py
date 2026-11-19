@@ -5,7 +5,7 @@ This module will contain common utility functions used across
 the off-chain tools for the Rain protocol.
 """
 import json
-from typing import Dict, Any
+from typing import Any, Callable, Dict
 
 def save_deployment_data(data: Dict[str, Any], filepath: str) -> None:
     """
@@ -41,4 +41,15 @@ def load_deployment_data(filepath: str) -> Dict[str, Any]:
         print(f"Error: Could not decode JSON from {filepath}.")
         return {}
 
-# More utilities will be added below.
+def expect_revert(call: Callable[[], Any], message: str = "") -> None:
+    """
+    Asserts that ``call()`` raises (i.e. the transaction reverts) with ``message`` in
+    the error. Unlike a bare try/except, this fails loudly when the call succeeds.
+    """
+    try:
+        call()
+    except Exception as e:
+        if message not in str(e):
+            raise AssertionError(f"Expected a revert containing {message!r}, got: {e}")
+        return
+    raise AssertionError(f"Expected a revert containing {message!r}, but the call succeeded")

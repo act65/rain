@@ -1,150 +1,99 @@
-# File: 03_run_reputation_oracle.py (General-Purpose & Stateful)
-# This version contains the fix for the "Expected list or tuple, got dict" error.
+# File: scripts/run_reputation_oracle.py
+"""
+The reputation oracle. Designed to be run repeatedly: each run reads the promise
+events emitted since the previous run, applies the rules in `rain.reputation`, and
+commits the resulting reputation changes through the ReputationUpdater.
+"""
 
-from brownie import (
-    accounts,
-    network,
-    CalculusEngine,
-    RainReputation,
-    ReputationUpdater,
-)
-from rain.utils import load_deployment_data
-from rain.reputation import process_promise_events, REP_GAIN_ON_FULFILLMENT, REP_LOSS_ON_DEFAULT # Updated import
 import json
-import time
 
-# --- ORACLE CONFIGURATION ---
+from ape import accounts, chain, networks, project
+
+from rain.reputation import process_promise_log, to_update_tuples
+from rain.utils import load_deployment_data
+
 DEPLOYMENT_FILE = "deployment_addresses.json"
-ORACLE_STATE_FILE = "oracle_state.json" # To store the last block we processed
-# In a real environment, you'd use a more robust key management solution
-ORACLE_OPERATOR = accounts[0] 
+ORACLE_STATE_FILE = "oracle_state.json"  # Remembers the last block we processed
 
-# Process blocks in batches to be safe against re-orgs and RPC limits
-BLOCK_BATCH_SIZE = 1000 
-# How many blocks to wait for confirmation before processing
-BLOCK_CONFIRMATIONS = 5 
+# Process blocks in batches to stay within RPC limits
+BLOCK_BATCH_SIZE = 1000
+# How many blocks to wait before treating a block as final. A local development
+# chain never re-orgs, and waiting there would leave the latest events unprocessed.
+LIVE_BLOCK_CONFIRMATIONS = 5
 
-# REP_GAIN_ON_FULFILLMENT and REP_LOSS_ON_DEFAULT are now imported from rain.reputation
 
-def load_state():
-    """Loads the last processed block number from the state file."""
+def block_confirmations():
+    return 0 if networks.provider.network.is_local else LIVE_BLOCK_CONFIRMATIONS
+
+
+def load_state(engine_address):
+    """
+    Loads the last processed block. The state is only valid for the CalculusEngine
+    it was recorded against: after a redeploy (or a fresh local chain) we start again.
+    """
     try:
         with open(ORACLE_STATE_FILE, "r") as f:
-            return json.load(f)
-    except FileNotFoundError:
-        # If the file doesn't exist, we start from the block the engine was deployed
-        addresses = load_deployment_data(DEPLOYMENT_FILE)
-        if not addresses or "CalculusEngine" not in addresses:
-            print("Error: Could not load CalculusEngine address for initial state. Exiting oracle.")
-            # In a real scenario, might raise an exception or handle differently
-            return {"last_processed_block": network.chain.height - BLOCK_CONFIRMATIONS -1} # Fallback
+            state = json.load(f)
+    except (FileNotFoundError, json.JSONDecodeError):
+        state = {}
+    if state.get("calculus_engine") != engine_address or state.get("last_processed_block", 0) > chain.blocks.height:
+        print("No oracle state for this deployment. Scanning from the first block.")
+        state = {"calculus_engine": engine_address, "last_processed_block": -1}
+    return state
 
-        engine_contract_address = addresses["CalculusEngine"]
-        # Ensure the contract is deployed and accessible before getting tx details
-        try:
-            engine_contract = CalculusEngine.at(engine_contract_address)
-            engine_deployment_tx_hash = engine_contract.tx.txid
-            engine_deployment_block = network.chain.get_transaction(engine_deployment_tx_hash).block_number
-            print(f"Oracle state file not found. Initializing from CalculusEngine deployment block: {engine_deployment_block}")
-            return {"last_processed_block": engine_deployment_block}
-        except Exception as e:
-            print(f"Error accessing CalculusEngine deployment info: {e}. Defaulting last processed block.")
-            # Fallback if contract or tx info isn't available (e.g., not yet run on this network)
-            return {"last_processed_block": network.chain.height - BLOCK_CONFIRMATIONS -1 if network.chain.height > BLOCK_CONFIRMATIONS else 0}
 
 def save_state(state):
-    """Saves the last processed block number to the state file."""
     with open(ORACLE_STATE_FILE, "w") as f:
         json.dump(state, f, indent=4)
 
-# The process_events function has been moved to rain.reputation.py
-# It is now imported as process_promise_events.
 
 def main():
-    """
-    Main oracle loop. This script is designed to be run repeatedly.
-    It fetches new events since its last run, processes them, and commits
-    reputation changes to the chain.
-    """
     print("--- REPUTATION ORACLE SERVICE ---")
+    oracle_operator = accounts.test_accounts[0]  # Must hold UPDATER_ROLE on the ReputationUpdater
 
-    # --- 1. SETUP ---
-    state = load_state()
-    last_processed_block = state.get("last_processed_block", 0) # Use .get for safety
-    
     addresses = load_deployment_data(DEPLOYMENT_FILE)
     if not addresses:
-        print("Failed to load deployment addresses for oracle. Exiting.")
-        return
+        raise RuntimeError("Could not load deployment addresses. Run scripts/deploy.py first.")
 
-    calculus_engine = CalculusEngine.at(addresses["CalculusEngine"])
-    reputation_updater = ReputationUpdater.at(addresses["ReputationUpdater"])
-    rain_reputation = RainReputation.at(addresses["RainReputation"]) # For verification
+    calculus_engine = project.CalculusEngine.at(addresses["CalculusEngine"])
+    reputation_updater = project.ReputationUpdater.at(addresses["ReputationUpdater"])
+    rain_reputation = project.RainReputation.at(addresses["RainReputation"])
 
-    current_block = network.chain.height
-    # We leave a buffer for chain confirmations
-    target_block = current_block - BLOCK_CONFIRMATIONS
+    state = load_state(calculus_engine.address)
+    last_processed_block = state["last_processed_block"]
+    target_block = chain.blocks.height - block_confirmations()
 
     print(f"Last processed block: {last_processed_block}")
-    print(f"Current chain height: {current_block}")
-
+    print(f"Target block: {target_block}")
     if last_processed_block >= target_block:
         print("\nNo new blocks to process. Exiting.")
         return
 
-    # --- 2. PROCESS IN BATCHES ---
-    all_increases = []
-    all_decreases = []
-
+    # --- 1. READ THE PROMISE LOG ---
+    increases, decreases = [], []
     for start in range(last_processed_block + 1, target_block + 1, BLOCK_BATCH_SIZE):
         end = min(start + BLOCK_BATCH_SIZE - 1, target_block)
-        # Use the imported function from rain.reputation
-        increases, decreases = process_promise_events(calculus_engine, start, end)
-        all_increases.extend(increases)
-        all_decreases.extend(decreases)
+        batch_increases, batch_decreases, withheld = process_promise_log(calculus_engine, rain_reputation, start, end)
+        increases.extend(batch_increases)
+        decreases.extend(batch_decreases)
+        # A promise kept while its promisor was delinquent earns nothing.
+        for change in withheld:
+            print(f"  - {change['reason']} earns nothing: {change['user']} was delinquent when it was kept.")
 
-    # --- 3. COMMIT CHANGES ON-CHAIN ---
-    if not all_increases and not all_decreases:
-        print("\nNo new promise resolutions found in the processed blocks.")
+    # --- 2. COMMIT CHANGES ON-CHAIN ---
+    if not increases and not decreases:
+        print("\nNo reputation changes to commit.")
     else:
-        print("\nFound new events. Committing reputation changes on-chain...")
+        print(f"\nCommitting {len(increases)} increase(s) and {len(decreases)} decrease(s)...")
+        for change in increases + decreases:
+            print(f"  - {change['reason']}: {change['user']}")
+        tx = reputation_updater.applyReputationChanges(
+            to_update_tuples(increases), to_update_tuples(decreases), sender=oracle_operator
+        )
+        print(f"  - Success! Transaction hash: {tx.txn_hash}")
 
-        # --- FIX: Convert list of dicts to list of tuples ---
-        # The Solidity function `applyReputationChanges` expects an array of structs.
-        # Brownie requires this to be formatted as a list of tuples, where the
-        # tuple elements match the struct's field order (e.g., address, uint256, string).
-        increases_for_tx = [
-            (change['user'], change['amount'], change['reason']) for change in all_increases
-        ]
-        decreases_for_tx = [
-            (change['user'], change['amount'], change['reason']) for change in all_decreases
-        ]
-
-        try:
-            # Pass the correctly formatted lists of tuples to the function
-            tx = reputation_updater.applyReputationChanges(
-                increases_for_tx,
-                decreases_for_tx,
-                {"from": ORACLE_OPERATOR}
-            )
-            print(f"  - Success! Transaction hash: {tx.txid}")
-        except Exception as e:
-            print(f"  - ERROR: Failed to commit changes: {e}")
-            return # Do not update state if commit fails
-
-    # --- 4. UPDATE STATE ---
+    # --- 3. UPDATE STATE (only reached if the commit succeeded) ---
     state["last_processed_block"] = target_block
     save_state(state)
-    print(f"\nSuccessfully processed up to block {target_block}. State updated.")
-
-    # --- 5. (Optional) VERIFY A KNOWN ACTOR'S SCORE ---
-    # This part is for demonstration during simulation.
-    # In production, you'd rely on logs and monitoring.
-    print("\n--- Verifying Scores (for simulation context) ---")
-    try:
-        bob = accounts[2]
-        charlie = accounts[3]
-        print(f"  - Bob's Final Reputation: {rain_reputation.reputationScores(bob) / 10**18}")
-        print(f"  - Charlie's Final Reputation: {rain_reputation.reputationScores(charlie) / 10**18}")
-    except Exception:
-        print("  - Could not verify simulation accounts (this is normal if not in a test environment).")
+    print(f"\nProcessed up to block {target_block}. State updated.")
+    return increases, decreases

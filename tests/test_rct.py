@@ -1,247 +1,250 @@
-import pytest
-from brownie import RainReputation, ReputationClaimToken, accounts, reverts
+"""
+ReputationClaimToken: the claim on a defaulted promise.
 
-# This fixture sets up the entire environment needed for the tests.
-# It deploys both contracts, links them, and assigns necessary roles.
+Claims tested:
+  - an RCT exists only for a promise the CalculusEngine records as Defaulted, is
+    minted only by that promise's script, only once, and copies its terms from the log;
+  - a user is delinquent exactly while they have outstanding RCTs against them;
+  - only the holder (or someone they approved) can burn an RCT.
+"""
+import pytest
+from helpers import E18, accounts, action_id_of, advance, chain, deploy_reputation, ev, project, promise_id_of, reverts, token_id_of
+
+DURATION = 100
+
+
 @pytest.fixture
 def contracts():
     """
-    Deploys and links RainReputation and ReputationClaimToken contracts.
-    - Returns: A tuple of (reputation_contract, rct_contract)
-    - Roles:
-        - accounts[0] (admin) is the admin for both contracts.
-        - accounts[1] (minter) is granted MINTER_ROLE on the RCT contract.
+    Returns (reputation_contract, rct_contract, engine).
+    accounts[0] is the admin and accounts[1] plays the script. The protocol fee is zero.
     """
     admin = accounts[0]
-    minter = accounts[1]
+    usdc = project.CurrencyToken.deploy(sender=admin)
+    reputation_contract = deploy_reputation(admin)
+    engine = project.CalculusEngine.deploy(usdc.address, accounts[9], 0, 0, E18, sender=admin)
+    rct_contract = project.ReputationClaimToken.deploy(reputation_contract.address, engine.address, sender=admin)
+    reputation_contract.setRctContract(rct_contract.address, sender=admin)
+    return reputation_contract, rct_contract, engine
 
-    # 1. Deploy the RainReputation contract
-    reputation_contract = RainReputation.deploy({'from': admin})
 
-    # 2. Deploy the ReputationClaimToken contract, passing the reputation contract's address
-    rct_contract = ReputationClaimToken.deploy(reputation_contract.address, {'from': admin})
+def make_promise(engine, promisor, promisee, amount=1000, script=None):
+    script = script or accounts[1]
+    engine.setScriptAuthorization(script, True, sender=promisor)
+    action_id = action_id_of(engine.monitoredAction(promisor, sender=script))
+    return promise_id_of(engine.monitoredPromise(
+        action_id, promisor, promisee, engine.usdcToken(), amount, chain.pending_timestamp + DURATION, sender=script
+    ))
 
-    # 3. Link the reputation contract to the RCT contract so it can accept status changes
-    reputation_contract.setRctContract(rct_contract.address, {'from': admin})
 
-    # 4. Grant the MINTER_ROLE to our designated minter account
-    minter_role = rct_contract.MINTER_ROLE()
-    rct_contract.grantRole(minter_role, minter, {'from': admin})
-
-    return reputation_contract, rct_contract
+def default_promise(engine, promisor, promisee, amount=1000, script=None):
+    script = script or accounts[1]
+    promise_id = make_promise(engine, promisor, promisee, amount, script)
+    advance(DURATION + 1)
+    engine.monitoredDefault(promise_id, sender=script)
+    return promise_id
 
 
 def test_deployment_and_setup(contracts):
-    """
-    Tests that the contracts are deployed and configured correctly.
-    """
-    reputation_contract, rct_contract = contracts
-    admin = accounts[0]
-    minter = accounts[1]
-
-    # Check ERC721 properties
+    reputation_contract, rct_contract, engine = contracts
     assert rct_contract.name() == "Rain Reputation Claim"
     assert rct_contract.symbol() == "RCT"
-
-    # Check that the reputation contract address was set correctly
     assert rct_contract.rainReputation() == reputation_contract.address
-
-    # Check that the MINTER_ROLE was granted correctly
-    minter_role = rct_contract.MINTER_ROLE()
-    assert rct_contract.hasRole(minter_role, minter) == True
-    assert rct_contract.hasRole(minter_role, admin) == False
+    assert rct_contract.calculusEngine() == engine.address
 
 
-def test_mint_permissions(contracts):
-    """
-    Ensures only an account with MINTER_ROLE can mint an RCT.
-    """
-    _, rct_contract = contracts
-    unauthorized = accounts[2]
-    defaulter = accounts[3]
-    lender = accounts[4]
+# --- Minting is bound to the engine's log ---
 
-    # Attempt to mint from an unauthorized account
-    with reverts("RCT: Caller is not a minter"):
-        rct_contract.mint(123, defaulter, lender, 1000, accounts[5], {'from': unauthorized})
+def test_cannot_mint_for_a_promise_that_is_not_defaulted(contracts):
+    reputation_contract, rct_contract, engine = contracts
+    script, defaulter, lender = accounts[1], accounts[3], accounts[4]
+
+    with reverts("RCT: Promise is not defaulted"):
+        rct_contract.mint(999, sender=script)  # no such promise
+
+    pending = make_promise(engine, defaulter, lender)
+    with reverts("RCT: Promise is not defaulted"):
+        rct_contract.mint(pending, sender=script)
+
+    kept = make_promise(engine, defaulter, lender)
+    engine.monitoredFulfillment(kept, sender=script)
+    with reverts("RCT: Promise is not defaulted"):
+        rct_contract.mint(kept, sender=script)
+
+    assert not reputation_contract.isDelinquent(defaulter)
+
+
+def test_only_the_promises_script_can_mint(contracts):
+    reputation_contract, rct_contract, engine = contracts
+    defaulter, lender = accounts[3], accounts[4]
+    promise_id = default_promise(engine, defaulter, lender)
+    for caller in (accounts[0], lender, defaulter, accounts[7]):
+        with reverts("RCT: Caller is not the script for this promise"):
+            rct_contract.mint(promise_id, sender=caller)
+    assert not reputation_contract.isDelinquent(defaulter)
+
+
+def test_a_script_cannot_make_a_non_consenting_user_delinquent(contracts):
+    """The whole path to delinquency starts with a promise, which needs the promisor's authorization."""
+    _, _, engine = contracts
+    rogue_script, victim = accounts[7], accounts[3]
+    action_id = action_id_of(engine.monitoredAction(rogue_script, sender=rogue_script))
+    with reverts("CalculusEngine: Script not authorized by promisor"):
+        engine.monitoredPromise(action_id, victim, rogue_script, engine.usdcToken(), 1, chain.pending_timestamp + 1, sender=rogue_script)
+
+
+def test_claim_can_be_minted_only_once_per_promise(contracts):
+    _, rct_contract, engine = contracts
+    script, defaulter, lender = accounts[1], accounts[3], accounts[4]
+    promise_id = default_promise(engine, defaulter, lender)
+    token_id = token_id_of(rct_contract.mint(promise_id, sender=script))
+    assert rct_contract.claimForPromise(promise_id) == token_id
+
+    with reverts("RCT: Claim already minted for this promise"):
+        rct_contract.mint(promise_id, sender=script)
+
+    rct_contract.burn(token_id, sender=lender)  # not even after the claim was settled
+    with reverts("RCT: Claim already minted for this promise"):
+        rct_contract.mint(promise_id, sender=script)
+    assert rct_contract.debtCount(defaulter) == 0
 
 
 def test_mint_first_offense_and_delinquency(contracts):
     """
-    Tests minting an RCT for a user's first default, which should make them delinquent.
+    The first RCT against a user makes them delinquent; its terms come from the promise.
     """
-    reputation_contract, rct_contract = contracts
-    minter = accounts[1]
-    defaulter = accounts[3]
-    lender = accounts[4]
-    loan_contract = accounts[5]
-    promise_id = 101
+    reputation_contract, rct_contract, engine = contracts
+    script, defaulter, lender = accounts[1], accounts[3], accounts[4]
     shortfall = 5000
+    promise_id = default_promise(engine, defaulter, lender, amount=shortfall)
 
-    # Pre-condition: Defaulter is not delinquent
     assert reputation_contract.isDelinquent(defaulter) == False
 
-    # Act: Minter mints the first RCT against the defaulter
-    tx = rct_contract.mint(promise_id, defaulter, lender, shortfall, loan_contract, {'from': minter})
-    token_id = tx.return_value
+    tx = rct_contract.mint(promise_id, sender=script)
+    token_id = token_id_of(tx)
 
-    # Assert: Check state changes
     assert rct_contract.ownerOf(token_id) == lender
     assert rct_contract.debtCount(defaulter) == 1
-    
-    # Assert: Defaulter should now be delinquent
     assert reputation_contract.isDelinquent(defaulter) == True
+    assert reputation_contract.isDelinquent(lender) == False
 
-    # Assert: Check claim details
     claim = rct_contract.claims(token_id)
     assert claim['promiseId'] == promise_id
     assert claim['defaulterAddress'] == defaulter
     assert claim['originalLenderAddress'] == lender
     assert claim['shortfallAmount'] == shortfall
+    assert claim['loanContractAddress'] == script
+    assert claim['defaultTimestamp'] == tx.timestamp
 
-    # Assert: Event was emitted correctly
-    assert 'ClaimMinted' in tx.events
-    assert tx.events['ClaimMinted']['tokenId'] == token_id
-    assert tx.events['ClaimMinted']['defaulter'] == defaulter
+    event = ev(tx)['ClaimMinted']
+    assert (event['tokenId'], event['defaulter'], event['originalLender'], event['shortfallAmount']) == (
+        token_id, defaulter, lender, shortfall)
 
 
 def test_mint_subsequent_offense(contracts):
     """
-    Tests that a second offense increments the debt count but doesn't re-trigger delinquency.
+    A second offense increments the debt count; the user stays delinquent.
     """
-    reputation_contract, rct_contract = contracts
-    minter = accounts[1]
-    defaulter = accounts[3]
-    lender = accounts[4]
+    reputation_contract, rct_contract, engine = contracts
+    script, defaulter = accounts[1], accounts[3]
 
-    # Arrange: Mint the first RCT
-    rct_contract.mint(101, defaulter, lender, 5000, accounts[5], {'from': minter})
+    rct_contract.mint(default_promise(engine, defaulter, accounts[4]), sender=script)
     assert rct_contract.debtCount(defaulter) == 1
-    assert reputation_contract.isDelinquent(defaulter) == True
 
-    # Act: Mint a second RCT against the same defaulter
-    rct_contract.mint(102, defaulter, lender, 2000, accounts[6], {'from': minter})
-
-    # Assert: Debt count is now 2, and delinquent status is still true
+    rct_contract.mint(default_promise(engine, defaulter, accounts[5]), sender=script)
     assert rct_contract.debtCount(defaulter) == 2
     assert reputation_contract.isDelinquent(defaulter) == True
 
+
+def test_mint_to_a_contract_that_cannot_receive_nfts_does_not_block_the_default(contracts):
+    reputation_contract, rct_contract, engine = contracts
+    script, defaulter = accounts[1], accounts[3]
+    lender_contract = engine.usdcToken()  # a contract with no onERC721Received
+    promise_id = default_promise(engine, defaulter, lender_contract)
+    token_id = token_id_of(rct_contract.mint(promise_id, sender=script))
+    assert rct_contract.ownerOf(token_id) == lender_contract
+    assert reputation_contract.isDelinquent(defaulter)
+
+
+# --- Burning ---
 
 def test_burn_permissions_by_unapproved_non_owner(contracts):
     """
     Ensures an unapproved, non-owner account cannot burn the RCT.
     """
-    _, rct_contract = contracts
-    minter = accounts[1]
-    defaulter = accounts[3]
-    lender = accounts[4]
+    _, rct_contract, engine = contracts
+    script, defaulter, lender = accounts[1], accounts[3], accounts[4]
+    token_id = token_id_of(rct_contract.mint(default_promise(engine, defaulter, lender), sender=script))
 
-    # Arrange: Mint a token, which is owned by the lender
-    tx = rct_contract.mint(201, defaulter, lender, 1000, accounts[5], {'from': minter})
-    token_id = tx.return_value
-
-    # Act & Assert: The defaulter (not the owner or approved) cannot burn it
-    with reverts("ERC721: burn caller is not owner nor approved"):
-        rct_contract.burn(token_id, {'from': defaulter})
-
-    # Act & Assert: A random account cannot burn it
-    with reverts("ERC721: burn caller is not owner nor approved"):
-        rct_contract.burn(token_id, {'from': accounts[9]})
+    for caller in (defaulter, script, accounts[0], accounts[9]):
+        with reverts("ERC721: burn caller is not owner nor approved"):
+            rct_contract.burn(token_id, sender=caller)
+    assert rct_contract.ownerOf(token_id) == lender
 
 
 def test_burn_by_approved_address(contracts):
     """
-    Tests that a non-owner who has been approved can burn the token.
-    This simulates the LoanScript workflow.
+    A non-owner who has been approved can burn the token (the LoanScript workflow).
     """
-    reputation_contract, rct_contract = contracts
-    minter = accounts[1]
-    owner = accounts[3]  # This account will own the token
-    approved_burner = accounts[4] # This account will be approved to burn it
-    defaulter_address = accounts[5] # The address of the defaulter recorded in the token
+    reputation_contract, rct_contract, engine = contracts
+    script, defaulter, owner, approved_burner = accounts[1], accounts[5], accounts[3], accounts[4]
+    token_id = token_id_of(rct_contract.mint(default_promise(engine, defaulter, owner), sender=script))
 
-    # 1. Mint a token. The 'owner' now holds it.
-    tx = rct_contract.mint(501, defaulter_address, owner, 1000, accounts[6], {'from': minter})
-    token_id = tx.return_value
-    assert rct_contract.ownerOf(token_id) == owner
+    rct_contract.approve(approved_burner, token_id, sender=owner)
+    burn_tx = rct_contract.burn(token_id, sender=approved_burner)
 
-    # 2. The owner approves 'approved_burner' to manage this specific token
-    rct_contract.approve(approved_burner, token_id, {'from': owner})
-    assert rct_contract.getApproved(token_id) == approved_burner
-
-    # 3. The 'approved_burner' (who is not the owner) successfully burns the token
-    burn_tx = rct_contract.burn(token_id, {'from': approved_burner})
-
-    # Assert: Token is gone
     with reverts("ERC721: invalid token ID"):
         rct_contract.ownerOf(token_id)
-
-    # Assert: Event was emitted correctly
-    assert 'ClaimBurned' in burn_tx.events
-    assert burn_tx.events['ClaimBurned']['burner'] == approved_burner
+    assert ev(burn_tx)['ClaimBurned']['burner'] == approved_burner
+    assert not reputation_contract.isDelinquent(defaulter)
 
 
 def test_full_lifecycle_reacquire_and_burn(contracts):
     """
-    Tests the complete cycle:
-    1. Mint RCT -> Lender owns it, Defaulter is delinquent.
-    2. Lender transfers RCT to Defaulter.
-    3. Defaulter burns RCT -> Defaulter is no longer delinquent.
+    Mint -> lender transfers the RCT to the defaulter -> defaulter burns it -> no longer delinquent.
     """
-    reputation_contract, rct_contract = contracts
-    minter = accounts[1]
-    defaulter = accounts[3]
-    lender = accounts[4]
+    reputation_contract, rct_contract, engine = contracts
+    script, defaulter, lender = accounts[1], accounts[3], accounts[4]
+    token_id = token_id_of(rct_contract.mint(default_promise(engine, defaulter, lender), sender=script))
 
-    # 1. Mint RCT
-    tx = rct_contract.mint(301, defaulter, lender, 1000, accounts[5], {'from': minter})
-    token_id = tx.return_value
-    assert rct_contract.ownerOf(token_id) == lender
-    assert reputation_contract.isDelinquent(defaulter) == True
-    assert rct_contract.debtCount(defaulter) == 1
-
-    # 2. Lender transfers the token to the defaulter
-    rct_contract.transferFrom(lender, defaulter, token_id, {'from': lender})
+    rct_contract.transferFrom(lender, defaulter, token_id, sender=lender)
     assert rct_contract.ownerOf(token_id) == defaulter
+    assert reputation_contract.isDelinquent(defaulter) == True  # holding your own RCT is not enough
 
-    # 3. Defaulter (now the owner) burns the token
-    burn_tx = rct_contract.burn(token_id, {'from': defaulter})
+    burn_tx = rct_contract.burn(token_id, sender=defaulter)
 
-    # Assert: State is cleaned up
     assert rct_contract.debtCount(defaulter) == 0
     assert reputation_contract.isDelinquent(defaulter) == False
-    
-    # Assert: Token is gone
     with reverts("ERC721: invalid token ID"):
         rct_contract.ownerOf(token_id)
-
-    # Assert: Event was emitted
-    assert 'ClaimBurned' in burn_tx.events
-    assert burn_tx.events['ClaimBurned']['tokenId'] == token_id
-    assert burn_tx.events['ClaimBurned']['burner'] == defaulter
+    assert rct_contract.claims(token_id)['defaulterAddress'] == "0x" + "00" * 20
+    assert ev(burn_tx)['ClaimBurned']['tokenId'] == token_id
+    assert ev(burn_tx)['ClaimBurned']['burner'] == defaulter
 
 
 def test_burn_not_last_debt(contracts):
     """
-    Tests that burning an RCT when others are outstanding correctly decrements
-    the debt count but does not clear the delinquent status.
+    Burning one of several RCTs decrements the debt count but leaves the user delinquent.
     """
-    reputation_contract, rct_contract = contracts
-    minter = accounts[1]
-    defaulter = accounts[3]
-    lender = accounts[4]
+    reputation_contract, rct_contract, engine = contracts
+    script, defaulter, lender = accounts[1], accounts[3], accounts[4]
+    token_id_1 = token_id_of(rct_contract.mint(default_promise(engine, defaulter, lender), sender=script))
+    token_id_2 = token_id_of(rct_contract.mint(default_promise(engine, defaulter, lender), sender=script))
 
-    # Arrange: Mint two RCTs against the defaulter
-    tx1 = rct_contract.mint(401, defaulter, lender, 1000, accounts[5], {'from': minter})
-    token_id_1 = tx1.return_value
-    rct_contract.mint(402, defaulter, lender, 2000, accounts[6], {'from': minter})
-    
-    assert rct_contract.debtCount(defaulter) == 2
-    assert reputation_contract.isDelinquent(defaulter) == True
-
-    # Act: Lender burns the first token (assuming they still own it)
-    rct_contract.burn(token_id_1, {'from': lender})
-
-    # Assert: Debt count is now 1, but defaulter is still delinquent
+    rct_contract.burn(token_id_1, sender=lender)
     assert rct_contract.debtCount(defaulter) == 1
     assert reputation_contract.isDelinquent(defaulter) == True
+
+    rct_contract.burn(token_id_2, sender=lender)
+    assert rct_contract.debtCount(defaulter) == 0
+    assert reputation_contract.isDelinquent(defaulter) == False
+
+
+def test_debts_of_different_users_are_independent(contracts):
+    reputation_contract, rct_contract, engine = contracts
+    script, a, b, lender = accounts[1], accounts[3], accounts[5], accounts[4]
+    token_a = token_id_of(rct_contract.mint(default_promise(engine, a, lender), sender=script))
+    rct_contract.mint(default_promise(engine, b, lender), sender=script)
+    rct_contract.burn(token_a, sender=lender)
+    assert not reputation_contract.isDelinquent(a)
+    assert reputation_contract.isDelinquent(b)

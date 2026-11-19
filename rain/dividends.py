@@ -1,118 +1,104 @@
-# rain/dividends.py
-
 """
-Core off-chain logic for calculating and preparing dividend distributions.
+Off-chain logic for the Reputation Dividend: pro-rata shares and the Merkle drop.
+
+``compute_shares`` and ``build_tree`` are pure. The remaining functions take contract
+objects (Ape contracts in practice) and only call their public getters / events.
 """
 
-from brownie import web3 # For web3.solidityKeccak
-from typing import List, Dict, Any, Tuple
+from typing import Any, Dict, List, Mapping, Optional, Tuple
 
-# It's good practice to ensure external dependencies like merkle_tree are explicitly handled.
-# For now, we assume it's available in the environment.
-try:
-    from merkle_tree import MerkleTree
-except ImportError:
-    # Provide a fallback or raise a more informative error if merkle_tree is critical
-    print("Warning: merkle_tree library not found. Dividend calculation requiring Merkle trees will fail.")
-    MerkleTree = None
+from rain.merkletree import EMPTY_ROOT, OZMerkleTree, leaf_hash
 
-def calculate_dividend_shares(
-    rain_reputation_contract: Any, # Brownie Contract object for RainReputation
-    user_addresses: List[str],
-    total_dividend_amount: int
-) -> Tuple[List[Dict[str, Any]], str, int]:
+
+def compute_shares(reputations: Mapping[str, int], total_dividend_amount: int) -> Dict[str, int]:
     """
-    Calculates individual dividend shares based on user reputation and prepares a Merkle tree.
+    Splits ``total_dividend_amount`` pro rata to reputation, rounding each share down.
 
-    Args:
-        rain_reputation_contract: The deployed RainReputation Brownie contract instance.
-        user_addresses: A list of user addresses to calculate shares for.
-        total_dividend_amount: The total amount of dividends to be distributed.
-
-    Returns:
-        A tuple containing:
-        - A list of dictionaries, each with "account", "reputation", and "amount" (dividend share).
-        - The Merkle root (hex string).
-        - The total reputation of the participating users.
+    Accounts with zero reputation, or whose share rounds down to zero, are left out.
+    The shares therefore sum to at most ``total_dividend_amount``; the remainder
+    ("dust", less than one base unit per account) stays in the Treasury.
     """
-    if MerkleTree is None:
-        raise EnvironmentError("MerkleTree library is not installed, cannot calculate dividend shares.")
+    if total_dividend_amount < 0:
+        raise ValueError("total_dividend_amount must be non-negative")
+    if any(rep < 0 for rep in reputations.values()):
+        raise ValueError("reputation must be non-negative")
 
-    user_data = []
-    total_reputation_score = 0
-    print("  - [Core Logic] Fetching reputations for dividend calculation...")
-    for user_address in user_addresses:
-        # Ensure rep is fetched using the passed contract instance
-        rep = rain_reputation_contract.reputationScores(user_address)
-        if rep > 0:
-            user_data.append({"account": user_address, "reputation": rep})
-            total_reputation_score += rep
-            print(f"    - User {user_address[:10]}... Reputation: {rep / 10**18}")
-        else:
-            print(f"    - User {user_address[:10]}... has 0 reputation, skipping.")
+    total_reputation = sum(reputations.values())
+    if total_reputation == 0:
+        return {}
 
-    if total_reputation_score == 0:
-        print("  - [Core Logic] Total reputation of participating users is 0. No dividends to distribute.")
-        return [], "0x" + MerkleTree([]).root.hex() if MerkleTree else "0x0", 0
+    shares = {}
+    for account, rep in reputations.items():
+        share = (rep * total_dividend_amount) // total_reputation
+        if share > 0:
+            shares[account] = share
+    return shares
 
 
-    leaves_data_for_tree = []
-    detailed_user_shares = []
-
-    print("  - [Core Logic] Calculating individual dividend shares...")
-    for data in user_data:
-        dividend = 0
-        if total_reputation_score > 0 : # Avoid division by zero
-            dividend = (data["reputation"] * total_dividend_amount) // total_reputation_score
-
-        leaves_data_for_tree.append({"account": data["account"], "amount": dividend})
-        detailed_user_shares.append({
-            "account": data["account"],
-            "reputation": data["reputation"],
-            "amount": dividend  # This is the calculated share
-        })
-        print(f"    - Calculated share for {data['account'][:10]}...: {dividend / 10**18} DMD (Rep: {data['reputation'] / 10**18})")
-
-    # Prepare leaves for the Merkle tree
-    hashed_leaves = [
-        web3.solidityKeccak(['address', 'uint256'], [d['account'], d['amount']])
-        for d in leaves_data_for_tree
-    ]
-
-    merkle_tree_instance = MerkleTree(hashed_leaves)
-    merkle_root_hex = "0x" + merkle_tree_instance.root.hex()
-    print(f"  - [Core Logic] Built Merkle Tree. Root: {merkle_root_hex}")
-
-    return detailed_user_shares, merkle_root_hex, total_reputation_score
+def build_tree(shares: Mapping[str, int]) -> OZMerkleTree:
+    """Builds the Merkle tree whose leaves are ``keccak(account, amount)``."""
+    return OZMerkleTree([leaf_hash(account, amount) for account, amount in shares.items()])
 
 
-def get_merkle_proof(
-    leaves_data: List[Dict[str, Any]], # Should contain account and amount for all participants
-    user_address: str,
-    user_amount: int
+def get_reputation_holders(
+    rain_reputation_contract: Any, from_block: int = 0, to_block: Optional[int] = None
 ) -> List[str]:
     """
-    Generates a Merkle proof for a specific user and their amount.
+    Every account that has been minted a reputation SBT, in mint order.
 
-    Args:
-        leaves_data: A list of all leaf data (dictionaries with "account" and "amount") used to build the tree.
-        user_address: The address of the user to generate the proof for.
-        user_amount: The amount for the user (must match the amount used in tree construction).
+    The SBT is non-transferable, so its mint (``Transfer`` from the zero address)
+    events enumerate the protocol's users.
+    """
+    transfers = rain_reputation_contract.Transfer
+    if to_block is None:
+        to_block = transfers.chain_manager.blocks.height
+    holders = []
+    for event in transfers.range(from_block, to_block + 1):  # `range` excludes its stop block
+        account = event.event_arguments["to"]
+        if account not in holders:
+            holders.append(account)
+    return holders
+
+
+def calculate_dividend_shares(
+    rain_reputation_contract: Any,
+    user_addresses: List[str],
+    total_dividend_amount: int,
+) -> Tuple[List[Dict[str, Any]], str, int]:
+    """
+    Reads reputations on-chain, computes dividend shares and the Merkle root.
 
     Returns:
-        A list of hex strings representing the Merkle proof.
+        - a list of ``{"account", "reputation", "amount"}`` dicts, one per account
+          with a non-zero share (these are exactly the leaves of the tree);
+        - the Merkle root as a 0x-prefixed hex string;
+        - the total reputation of ``user_addresses``.
     """
-    if MerkleTree is None:
-        raise EnvironmentError("MerkleTree library is not installed, cannot generate Merkle proof.")
+    reputations = {}
+    for account in dict.fromkeys(str(a) for a in user_addresses):  # de-duplicate, keep order
+        reputations[account] = rain_reputation_contract.reputationScores(account)
+    total_reputation = sum(reputations.values())
 
-    hashed_leaves = [
-        web3.solidityKeccak(['address', 'uint256'], [d['account'], d['amount']])
-        for d in leaves_data
+    shares = compute_shares(reputations, total_dividend_amount)
+    detailed = [
+        {"account": account, "reputation": reputations[account], "amount": amount}
+        for account, amount in shares.items()
     ]
-    merkle_tree_instance = MerkleTree(hashed_leaves)
+    root = build_tree(shares).root if shares else EMPTY_ROOT
+    return detailed, "0x" + root.hex(), total_reputation
 
-    user_leaf = web3.solidityKeccak(['address', 'uint256'], [user_address, user_amount])
-    proof = merkle_tree_instance.get_proof(user_leaf)
 
-    # Convert bytes to hex strings for easier use, especially with Brownie/Web3.py
-    return ["0x" + p.hex() for p in proof]
+def get_merkle_proof(leaves_data: List[Dict[str, Any]], user_address: str, user_amount: int) -> List[str]:
+    """
+    The Merkle proof for ``(user_address, user_amount)``.
+
+    Args:
+        leaves_data: dicts with "account" and "amount" for *all* participants (e.g. the
+            list returned by ``calculate_dividend_shares``).
+
+    Returns:
+        The proof as a list of 0x-prefixed hex strings.
+    """
+    tree = OZMerkleTree([leaf_hash(d["account"], d["amount"]) for d in leaves_data])
+    proof = tree.get_proof(leaf_hash(user_address, user_amount))
+    return ["0x" + node.hex() for node in proof]

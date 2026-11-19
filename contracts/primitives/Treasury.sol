@@ -7,40 +7,44 @@ import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/utils/cryptography/MerkleProof.sol";
 import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
 
-// --- INTERFACES ---
-
-/**
- * @dev A generic interface for a yield-bearing protocol.
- * Assumes the protocol takes a base asset (like USDC) and allows depositing/withdrawing it.
- */
-interface IYieldSource {
-    function deposit(address asset, uint256 amount, address onBehalfOf, uint16 referralCode) external;
-    function withdraw(address asset, uint256 amount, address to) external returns (uint256);
-}
-
-
 /**
  * @title Treasury
  * @author Rain Protocol
- * @dev This contract is the economic engine of the protocol. It collects fees,
- * invests them in whitelisted, yield-bearing protocols, and distributes the
- * generated yield back to users as a "Reputation Dividend" via Merkle drops.
+ * @dev Collects protocol fees and pays them out to reputation holders as a
+ * "Reputation Dividend" via Merkle drops. It does not invest.
+ *
+ * Fees are paid out gradually. Everything the Treasury receives goes into the payout
+ * fund, and each dividend cycle shares out a fixed fraction of the fund
+ * (`releasePerCycle`). In steady state that is exactly what comes in. When fee income
+ * changes, dividends follow it at the release rate instead of jumping.
+ *
+ * The release rate should equal the rate at which reputation decays, with one cycle
+ * per decay period. Then dividends and the supply of reputation respond to a change in
+ * activity at the same speed, and the dividend per point of reputation stays level: a
+ * point is never worth more than it cost, at start-up or after a surge. (See
+ * experiments/surge_fixes.)
+ *
+ * Money in the Treasury is in exactly one of three places:
+ *   - reserved for a dividend cycle: promised to holders until claimed, or until the
+ *     cycle expires and is recovered;
+ *   - the payout fund;
+ *   - received but not yet counted (fees since the last cycle, recovered funds): this
+ *     joins the fund when the next cycle starts.
  */
 contract Treasury is AccessControl, ReentrancyGuard {
 
-    // --- Roles ---
     bytes32 public constant MANAGER_ROLE = keccak256("MANAGER_ROLE");
-
-    // --- State Variables ---
+    uint256 private constant ONE = 1e18;
 
     IERC20 public immutable usdcToken;
     uint256 public claimPeriodDuration;
 
-    // Capital Management
-    mapping(address => bool) public isWhitelistedYieldSource;
-    mapping(address => uint256) public investedAmounts; // Tracks amount invested in each source
+    uint256 public reservedForDividends; // unclaimed funds of dividend cycles that have not been recovered
+    uint256 public payoutFund;
+    uint256 public releasePerCycle; // fraction of the fund shared out by each cycle, scaled by 1e18
+    uint256 public cycleInterval; // least time between two cycles, in seconds
+    uint256 public lastCycleTimestamp;
 
-    // Dividend Distribution
     struct DividendCycle {
         uint256 id;
         bytes32 merkleRoot;
@@ -52,86 +56,74 @@ contract Treasury is AccessControl, ReentrancyGuard {
     }
     DividendCycle[] public dividendCycles;
 
-
-    // --- Events ---
-
-    event YieldSourceWhitelisted(address indexed source);
-    event YieldSourceRemoved(address indexed source);
-    event CapitalInvested(address indexed source, uint256 amount);
-    event CapitalDivested(address indexed source, uint256 amount);
-
     event DividendCycleCreated(uint256 indexed cycleId, bytes32 indexed merkleRoot, uint256 totalAmount);
+    event PayoutFundChanged(uint256 indexed cycleId, uint256 received, uint256 paidOut, uint256 payoutFund);
     event DividendClaimed(uint256 indexed cycleId, address indexed user, uint256 amountClaimed);
     event FundsRecovered(uint256 indexed cycleId, uint256 amountRecovered);
     event ClaimPeriodUpdated(uint256 newDuration);
+    event ReleaseUpdated(uint256 releasePerCycle, uint256 cycleInterval);
 
-
-    // --- Constructor ---
-
+    /**
+     * @param _releasePerCycle Fraction of the payout fund each cycle shares out, scaled by 1e18.
+     * Set it to the reputation decay per period (1e18 - RainReputation.retentionPerPeriod).
+     * @param _cycleInterval Least time between cycles. Set it to RainReputation.decayPeriod.
+     */
     constructor(
         address _usdcTokenAddress,
-        uint256 _initialClaimPeriodDuration
+        uint256 _initialClaimPeriodDuration,
+        uint256 _releasePerCycle,
+        uint256 _cycleInterval
     ) {
         require(_usdcTokenAddress != address(0), "USDC token address cannot be zero");
+        require(_releasePerCycle > 0 && _releasePerCycle <= ONE, "Release must be in (0, 1]");
         usdcToken = IERC20(_usdcTokenAddress);
         claimPeriodDuration = _initialClaimPeriodDuration;
+        releasePerCycle = _releasePerCycle;
+        cycleInterval = _cycleInterval;
+        lastCycleTimestamp = block.timestamp;
 
         _grantRole(DEFAULT_ADMIN_ROLE, msg.sender);
         _grantRole(MANAGER_ROLE, msg.sender);
     }
 
+    // --- Accounting views ---
 
-    // --- Capital Management (MANAGER ONLY) ---
-
-    function addYieldSource(address _source) external {
-        require(hasRole(MANAGER_ROLE, msg.sender), "Manager only");
-        isWhitelistedYieldSource[_source] = true;
-        emit YieldSourceWhitelisted(_source);
+    /// @notice Money received that the fund has not yet counted (it will at the next cycle).
+    function uncounted() public view returns (uint256) {
+        uint256 balance = usdcToken.balanceOf(address(this));
+        uint256 assigned = reservedForDividends + payoutFund;
+        return balance > assigned ? balance - assigned : 0;
     }
 
-    function removeYieldSource(address _source) external {
-        require(hasRole(MANAGER_ROLE, msg.sender), "Manager only");
-        require(investedAmounts[_source] == 0, "Cannot remove source with active investment");
-        isWhitelistedYieldSource[_source] = false;
-        emit YieldSourceRemoved(_source);
+    /// @notice The pool the next dividend cycle shares out.
+    function distributable() public view returns (uint256) {
+        return ((payoutFund + uncounted()) * releasePerCycle) / ONE;
     }
 
-    function invest(address _yieldSource, uint256 _amount) external nonReentrant {
-        require(hasRole(MANAGER_ROLE, msg.sender), "Manager only");
-        require(isWhitelistedYieldSource[_yieldSource], "Source not whitelisted");
-        require(usdcToken.balanceOf(address(this)) >= _amount, "Insufficient liquid USDC");
-
-        investedAmounts[_yieldSource] += _amount;
-        
-        usdcToken.approve(_yieldSource, _amount);
-        // Example for Aave V3 pool. The interface might need adjustment for other protocols.
-        IYieldSource(_yieldSource).deposit(address(usdcToken), _amount, address(this), 0);
-
-        emit CapitalInvested(_yieldSource, _amount);
+    /// @notice The earliest time at which the next cycle can start.
+    function nextCycleTimestamp() public view returns (uint256) {
+        return lastCycleTimestamp + cycleInterval;
     }
-
-    function divest(address _yieldSource, uint256 _amount) external nonReentrant {
-        require(hasRole(MANAGER_ROLE, msg.sender), "Manager only");
-        require(investedAmounts[_yieldSource] >= _amount, "Cannot divest more than invested");
-
-        investedAmounts[_yieldSource] -= _amount;
-        
-        // Example for Aave V3 pool.
-        IYieldSource(_yieldSource).withdraw(address(usdcToken), _amount, address(this));
-
-        emit CapitalDivested(_yieldSource, _amount);
-    }
-
 
     // --- Core Dividend Logic (MANAGER ONLY) ---
 
+    /**
+     * @notice Starts a dividend cycle over `distributable()`.
+     * @param _merkleRoot Root of the (account, amount) leaves holders can claim.
+     * @param _totalAmount Sum of those leaves. At most `distributable()`; whatever is not
+     * shared out (rounding dust) stays in the fund.
+     */
     function createDividendCycle(bytes32 _merkleRoot, uint256 _totalAmount) external {
         require(hasRole(MANAGER_ROLE, msg.sender), "Manager only");
+        require(block.timestamp >= nextCycleTimestamp(), "Too soon for the next cycle");
         require(_totalAmount > 0, "Total dividend amount must be positive");
-        require(usdcToken.balanceOf(address(this)) >= _totalAmount, "Insufficient liquid Treasury balance for this cycle");
+
+        uint256 received = uncounted();
+        uint256 fund = payoutFund + received;
+        require(_totalAmount <= (fund * releasePerCycle) / ONE, "Exceeds this cycle's release");
 
         uint256 cycleId = dividendCycles.length;
-        dividendCycles.push(); // Creates empty element to avoid memory-to-storage copy issues
+        dividendCycles.push();
         DividendCycle storage cycle = dividendCycles[cycleId];
 
         cycle.id = cycleId;
@@ -140,9 +132,15 @@ contract Treasury is AccessControl, ReentrancyGuard {
         cycle.creationTimestamp = block.timestamp;
         cycle.expiryTimestamp = block.timestamp + claimPeriodDuration;
 
+        payoutFund = fund - _totalAmount;
+        reservedForDividends += _totalAmount;
+        lastCycleTimestamp = block.timestamp;
+
         emit DividendCycleCreated(cycleId, _merkleRoot, _totalAmount);
+        emit PayoutFundChanged(cycleId, received, _totalAmount, payoutFund);
     }
 
+    /// @notice After a cycle expires, returns what nobody claimed to the payout fund (at the next cycle).
     function recoverUnclaimedFunds(uint256 _cycleId) external {
         require(hasRole(MANAGER_ROLE, msg.sender), "Manager only");
         require(_cycleId < dividendCycles.length, "Invalid cycle ID");
@@ -152,10 +150,10 @@ contract Treasury is AccessControl, ReentrancyGuard {
         uint256 unclaimedAmount = cycle.totalAmount - cycle.claimedAmount;
         if (unclaimedAmount > 0) {
             cycle.claimedAmount = cycle.totalAmount; // Mark as fully "claimed" to balance books
+            reservedForDividends -= unclaimedAmount;
             emit FundsRecovered(_cycleId, unclaimedAmount);
         }
     }
-
 
     // --- Public Dividend Claiming ---
 
@@ -169,16 +167,19 @@ contract Treasury is AccessControl, ReentrancyGuard {
         bytes32 leaf = keccak256(abi.encodePacked(msg.sender, _amount));
         require(MerkleProof.verify(_merkleProof, cycle.merkleRoot, leaf), "Invalid Merkle proof");
 
+        // The leaves of a cycle can never pay out more than the cycle reserved.
+        require(cycle.claimedAmount + _amount <= cycle.totalAmount, "Claim exceeds cycle total");
+
         cycle.hasClaimed[msg.sender] = true;
         cycle.claimedAmount += _amount;
+        reservedForDividends -= _amount;
 
         require(usdcToken.transfer(msg.sender, _amount), "USDC transfer failed");
 
         emit DividendClaimed(_cycleId, msg.sender, _amount);
     }
 
-
-    // --- Admin and View Functions ---
+    // --- Admin ---
 
     function setClaimPeriodDuration(uint256 _newDuration) external {
         require(hasRole(DEFAULT_ADMIN_ROLE, msg.sender), "Admin only");
@@ -187,25 +188,17 @@ contract Treasury is AccessControl, ReentrancyGuard {
         emit ClaimPeriodUpdated(_newDuration);
     }
 
-    function getTotalValue() external view returns (uint256) {
-        // This is a simplified view. A production version would need to query each
-        // yield source to get the current value including accrued interest.
-        // For now, it shows the principal invested.
-        uint256 totalInvested;
-        // This loop would be too expensive on-chain if many sources are used.
-        // This is better calculated off-chain. For on-chain, we just sum principals.
-        // In a real scenario, you'd track yield-bearing tokens and their exchange rates.
-        // For this version, we assume principal = value.
-        // A more advanced version would require a more complex accounting system.
-        return usdcToken.balanceOf(address(this)) + totalInvested; // Placeholder for invested value
+    /// @notice Changes the release schedule. Keep it in step with the reputation decay (see the contract notes).
+    function setRelease(uint256 _releasePerCycle, uint256 _cycleInterval) external {
+        require(hasRole(DEFAULT_ADMIN_ROLE, msg.sender), "Admin only");
+        require(_releasePerCycle > 0 && _releasePerCycle <= ONE, "Release must be in (0, 1]");
+        releasePerCycle = _releasePerCycle;
+        cycleInterval = _cycleInterval;
+        emit ReleaseUpdated(_releasePerCycle, _cycleInterval);
     }
 
-    // --- REPLACEMENT GETTER FUNCTIONS ---
+    // --- Getters ---
 
-    /**
-    * @notice Returns the primary details of a dividend cycle, excluding the mapping.
-    * @dev This is the correct pattern for returning struct data externally.
-    */
     function getCycleDetails(uint256 _cycleId)
         external
         view
@@ -230,13 +223,6 @@ contract Treasury is AccessControl, ReentrancyGuard {
         );
     }
 
-    /**
-    * @notice Checks if a specific user has claimed their dividend for a given cycle.
-    * @dev This is the correct way to expose data from a mapping within a struct.
-    * @param _cycleId The ID of the dividend cycle to check.
-    * @param _user The address of the user to check.
-    * @return bool True if the user has claimed, false otherwise.
-    */
     function hasUserClaimed(uint256 _cycleId, address _user) external view returns (bool) {
         require(_cycleId < dividendCycles.length, "Invalid cycle ID");
         return dividendCycles[_cycleId].hasClaimed[_user];
@@ -244,9 +230,5 @@ contract Treasury is AccessControl, ReentrancyGuard {
 
     function getNumberOfCycles() external view returns (uint256) {
         return dividendCycles.length;
-    }
-
-    function supportsInterface(bytes4 interfaceId) public view virtual override(AccessControl) returns (bool) {
-        return super.supportsInterface(interfaceId);
     }
 }
