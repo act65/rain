@@ -1,0 +1,422 @@
+{
+ "provenance": {
+  "utc": "2026-11-19T14:57:25+00:00",
+  "commit": "e8b37fe",
+  "commit_short": "e8b37fe",
+  "dirty": false,
+  "dirty_paths": "not recorded (stamp passed through the environment)",
+  "branch": null,
+  "python": "3.12.3",
+  "host": "devbox.europe-west4-a.c.dev-compute-d7766860.internal"
+ },
+ "parameters": {
+  "kappa": 0.04,
+  "delta": 0.03,
+  "r": 0.05,
+  "fee_rate": 0.01,
+  "min_fee": 0.1,
+  "interest": 0.05,
+  "risk_tolerance": 0.1,
+  "floor": 100.0,
+  "tail_index": 1.0,
+  "shock_rate": 0.02
+ },
+ "stranger": {
+  "amount": 0.0,
+  "confederates": 0,
+  "trust": 0.0,
+  "due": 108.88888888888889,
+  "simulated_due": 108.88888888888889,
+  "profit": 97.72839506172838,
+  "simulated_profit": 97.72839506467183,
+  "relative_error": 3.0118694804477934e-11
+ },
+ "A": [
+  {
+   "amount": 1000.0,
+   "simulated_cost": 6.249999997377919,
+   "formula_cost": 6.25,
+   "share_of_amount": 0.006249999997377919
+  },
+  {
+   "amount": 10000.0,
+   "simulated_cost": 62.5000000001751,
+   "formula_cost": 62.5,
+   "share_of_amount": 0.00625000000001751
+  },
+  {
+   "amount": 100000.0,
+   "simulated_cost": 625.000000006391,
+   "formula_cost": 625.0,
+   "share_of_amount": 0.00625000000006391
+  }
+ ],
+ "B": [
+  {
+   "amount": 1000.0,
+   "confederates": 1,
+   "trust": 1.0,
+   "due": 1088.8888888888887,
+   "simulated_due": 1088.8888888888887,
+   "profit": 971.0339506172836,
+   "simulated_profit": 971.0339507030235,
+   "relative_error": 8.829751469661064e-11,
+   "gain_over_stranger_per_unit": 0.8733055556412951
+  },
+  {
+   "amount": 10000.0,
+   "confederates": 1,
+   "trust": 1.0,
+   "due": 10888.888888888889,
+   "simulated_due": 10888.888888888889,
+   "profit": 9710.339506172839,
+   "simulated_profit": 9710.339514468858,
+   "relative_error": 8.543490762168645e-10,
+   "gain_over_stranger_per_unit": 0.9612611119407131
+  },
+  {
+   "amount": 100000.0,
+   "confederates": 1,
+   "trust": 1.0,
+   "due": 108888.88888888888,
+   "simulated_due": 108888.88888888888,
+   "profit": 97103.39506172838,
+   "simulated_profit": 97103.39589154872,
+   "relative_error": 8.545739636327326e-09,
+   "gain_over_stranger_per_unit": 0.9700566749648699
+  }
+ ],
+ "C": [
+  {
+   "trust": 0.0,
+   "profit": 97.72839506172838,
+   "due": 108.88888888888889,
+   "amount": 0.0,
+   "confederates": 0,
+   "multiple": 1.0,
+   "predicted_multiple": 1.0,
+   "gain_over_stranger": 0.0,
+   "simulated_profit": 97.72839506467183,
+   "relative_error": 3.0118694804477934e-11
+  },
+  {
+   "trust": 0.5,
+   "profit": 103.87448884981235,
+   "due": 116.66549122664796,
+   "amount": 133.3521432163324,
+   "confederates": 1,
+   "multiple": 1.0714177765712567,
+   "predicted_multiple": 1.0816326530612246,
+   "gain_over_stranger": 6.146093788083974,
+   "simulated_profit": 103.87448884782312,
+   "relative_error": 1.9150375275589816e-11
+  },
+  {
+   "trust": 0.9,
+   "profit": 160.12803308082957,
+   "due": 179.6528571274326,
+   "amount": 177.82794100389228,
+   "confederates": 1,
+   "multiple": 1.6498731777009117,
+   "predicted_multiple": 1.7346938775510203,
+   "gain_over_stranger": 62.39963801910119,
+   "simulated_profit": 160.12803307832615,
+   "relative_error": 1.5633818390036308e-11
+  },
+  {
+   "trust": 0.99,
+   "profit": 808.1532921810639,
+   "due": 907.4074074074007,
+   "amount": 1000.0,
+   "confederates": 1,
+   "multiple": 8.333333333333272,
+   "predicted_multiple": 9.081632653061215,
+   "gain_over_stranger": 710.4248971193355,
+   "simulated_profit": 808.1532922575997,
+   "relative_error": 9.470455529177982e-11
+  },
+  {
+   "trust": 0.999,
+   "profit": 6776.844780381889,
+   "due": 7602.975005793682,
+   "amount": 7498.942093324558,
+   "confederates": 1,
+   "multiple": 69.82323984912566,
+   "predicted_multiple": 82.55102040816317,
+   "gain_over_stranger": 6679.116385320161,
+   "simulated_profit": 6776.8447847259995,
+   "relative_error": 6.410225753028705e-10
+  }
+ ],
+ "D": [
+  {
+   "trust": 0.0,
+   "profit": 97.72839506172838,
+   "due": 108.88888888888889,
+   "amount": 0.0,
+   "confederates": 0,
+   "multiple": 1.0,
+   "multiple_by_confederates": {
+    "0": 1.0,
+    "1": 1.0,
+    "2": 1.0,
+    "5": 1.0,
+    "10": 1.0,
+    "20": 1.0
+   },
+   "simulated_profit": 97.72839506467183,
+   "relative_error": 3.0118694804477934e-11
+  },
+  {
+   "trust": 0.1,
+   "profit": 130.7496985177853,
+   "due": 170.4481614304772,
+   "amount": 177.82794100389228,
+   "confederates": 20,
+   "multiple": 1.5653402580349947,
+   "multiple_by_confederates": {
+    "0": 1.0,
+    "1": 1.0074616260692741,
+    "2": 1.0158840112041179,
+    "5": 1.0484679441402236,
+    "10": 1.1422225897307903,
+    "20": 1.5653402580349947
+   },
+   "simulated_profit": 130.74969859429655,
+   "relative_error": 5.851733706004691e-10
+  },
+  {
+   "trust": 0.5,
+   "profit": 5902106.218293672,
+   "due": 7620535.687625129,
+   "amount": 7498942.093324558,
+   "confederates": 20,
+   "multiple": 69984.51141696547,
+   "multiple_by_confederates": {
+    "0": 1.0,
+    "1": 1.0714177765712567,
+    "2": 1.230889430721122,
+    "5": 2.962123489891727,
+    "10": 69.93616292803246,
+    "20": 69984.51141696547
+   },
+   "simulated_profit": 5902193.016893927,
+   "relative_error": 1.4706377188798591e-05
+  },
+  {
+   "trust": 0.9,
+   "profit": 9147741.779732313,
+   "due": 10888780.002177743,
+   "amount": 10000000.0,
+   "confederates": 10,
+   "multiple": 99999.00001999969,
+   "multiple_by_confederates": {
+    "0": 1.0,
+    "1": 1.6498731777009117,
+    "2": 8.333333333333375,
+    "5": 6975.893628562989,
+    "10": 99999.00001999969,
+    "20": 99999.9999999999
+   },
+   "simulated_profit": 9147824.569499603,
+   "relative_error": 9.050295612078029e-06
+  }
+ ],
+ "D_grouped": {
+  "trust": 0.5,
+  "profit": 103.87448884981235,
+  "due": 116.66549122664796,
+  "amount": 133.3521432163324,
+  "confederates": 1,
+  "multiple": 1.0714177765712567,
+  "simulated_profit": 103.87448884782312,
+  "relative_error": 1.9150375275589816e-11
+ },
+ "E": [
+  {
+   "trust": 0.0,
+   "due": 108.88888888888889,
+   "share_of_full": 0.01,
+   "rungs_to_reclimb": 94.3872656381287
+  },
+  {
+   "trust": 0.5,
+   "due": 108.98576512455516,
+   "share_of_full": 0.010008896797153026,
+   "rungs_to_reclimb": 94.36903892788858
+  },
+  {
+   "trust": 0.9,
+   "due": 109.76702508960572,
+   "share_of_full": 0.010080645161290322,
+   "rungs_to_reclimb": 94.22263877462049
+  },
+  {
+   "trust": 0.99,
+   "due": 119.39571150097466,
+   "share_of_full": 0.010964912280701754,
+   "rungs_to_reclimb": 92.49927672733267
+  },
+  {
+   "trust": 0.999,
+   "due": 972.2222222222154,
+   "share_of_full": 0.08928571428571366,
+   "rungs_to_reclimb": 49.51641010904142
+  },
+  {
+   "trust": 1.0,
+   "due": 10888.888888888889,
+   "share_of_full": 1.0,
+   "rungs_to_reclimb": 0.0
+  }
+ ],
+ "control": {
+  "0.0": {
+   "offers": [
+    108.88888888888889,
+    118.5679012345679,
+    129.10727023319615,
+    140.58347203170248,
+    153.07978065674268,
+    166.68687227067537
+   ],
+   "growth": [
+    1.0888888888888888,
+    1.0888888888888888,
+    1.088888888888889,
+    1.0888888888888888,
+    1.0888888888888888
+   ]
+  },
+  "0.5": {
+   "offers": [
+    108.88888888888889,
+    118.5679012345679,
+    129.10727023319615,
+    140.58347203170248,
+    153.07978065674268,
+    166.68687227067537
+   ],
+   "growth": [
+    1.0888888888888888,
+    1.0888888888888888,
+    1.088888888888889,
+    1.0888888888888888,
+    1.0888888888888888
+   ]
+  }
+ },
+ "F": {
+  "fine_search": [
+   {
+    "trust": 0.5,
+    "multiple": 1.081341129665453,
+    "predicted_multiple": 1.0816326530612246
+   },
+   {
+    "trust": 0.9,
+    "multiple": 1.7309116611078725,
+    "predicted_multiple": 1.7346938775510203
+   },
+   {
+    "trust": 0.99,
+    "multiple": 9.078828803636236,
+    "predicted_multiple": 9.081632653061215
+   },
+   {
+    "trust": 0.999,
+    "multiple": 82.34094833943712,
+    "predicted_multiple": 82.55102040816317
+   }
+  ],
+  "confederates_for_100x": [
+   {
+    "trust": 0.01,
+    "confederates": 707,
+    "amount": 10888.888888888889,
+    "multiple": 100.033553816703,
+    "wash_cost": 48115.277777777774,
+    "profit": -38339.15911095035,
+    "simulated_profit": -38339.15272104877,
+    "relative_error": 1.666677550729158e-07
+   },
+   {
+    "trust": 0.1,
+    "confederates": 68,
+    "amount": 10888.888888888889,
+    "multiple": 100.50126602295512,
+    "wash_cost": 4627.777777777777,
+    "profit": 5194.049652317441,
+    "simulated_profit": 5194.050269852633,
+    "relative_error": 1.1889281660678887e-07
+   },
+   {
+    "trust": 0.5,
+    "confederates": 11,
+    "amount": 10888.888888888889,
+    "multiple": 103.43967427717362,
+    "wash_cost": 748.6111111111111,
+    "profit": 9360.382241705016,
+    "simulated_profit": 9360.382344527827,
+    "relative_error": 1.0984894428079036e-08
+   },
+   {
+    "trust": 0.9,
+    "confederates": 4,
+    "amount": 10888.888888888889,
+    "multiple": 107.72663815941343,
+    "wash_cost": 272.22222222222223,
+    "profit": 10255.729230492798,
+    "simulated_profit": 10255.729269431356,
+    "relative_error": 3.79676157304561e-09
+   }
+  ]
+ },
+ "G": [
+  {
+   "fee_rate": 0.005,
+   "safe_trust": 0.01661107086283664,
+   "first_order": 0.04220507812500002,
+   "at_one_and_a_half_times": {
+    "gain": 501.72662807582833,
+    "confederates": 247,
+    "amount": 4570.881896148751,
+    "multiple": 42.01783908330201
+   }
+  },
+  {
+   "fee_rate": 0.01,
+   "safe_trust": 0.033150051496249944,
+   "first_order": 0.08441015625000003,
+   "at_one_and_a_half_times": {
+    "gain": 520.5947708649487,
+    "confederates": 123,
+    "amount": 4786.30092322638,
+    "multiple": 43.97690147210884
+   }
+  },
+  {
+   "fee_rate": 0.02,
+   "safe_trust": 0.06586584043589028,
+   "first_order": 0.16882031250000007,
+   "at_one_and_a_half_times": {
+    "gain": 549.6475280310661,
+    "confederates": 61,
+    "amount": 5128.613839913648,
+    "multiple": 47.128378710186816
+   }
+  },
+  {
+   "fee_rate": 0.05,
+   "safe_trust": 0.1614653885435473,
+   "first_order": 0.4220507812500001,
+   "at_one_and_a_half_times": {
+    "gain": 669.8384068868739,
+    "confederates": 24,
+    "amount": 6918.309709189362,
+    "multiple": 63.60477912811223
+   }
+  }
+ ],
+ "worst_relative_error": 1.4706377188798591e-05
+}

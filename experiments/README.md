@@ -30,6 +30,7 @@ contracts changed. `Economy()` still gives those rules so the experiments stay r
 | Dividend concentration | `dividend_concentration/` | Does reputation follow activity, early arrival or behaviour? (current rules) | run 2026-11-19 |
 | Oracle lag | `oracle_lag/` | What does a delay between a promise resolving and the oracle's update cost, and whom? (current rules; led to a change in how rewards are decided) | run 2026-11-19, re-run after the change |
 | Damping a surge | `surge_fixes/` | Which rule change keeps a point below its cost through a surge in activity? (the winner, a payout fund, is now in the contracts) | run 2026-11-19 |
+| Collusion | `collusion/` | What does a record manufactured with confederates cost, whom can it rob, and how much trust in unknown counterparties is safe? | run 2026-11-19 |
 | What a default really costs | `standing_value/` | Dividends, access to credit and the option to start again: the full account of a default on a ladder | run 2026-11-19 |
 
 Each README states its predictions (written before the first run) and then the outcome.

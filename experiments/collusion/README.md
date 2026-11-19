@@ -89,9 +89,10 @@ to create. The threshold model's parameters are assumed, not fitted.
 
 ## Outcome (2026-11-19)
 
-Numbers are in `results/SUMMARY.md`. The formulas match the simulation within 0.75% at every attack checked.
-That is above the 0.5% I set: the worst case is the 68-confederate attack added in part F, and the attacks in
-the original arms are within 0.46%. Both controls behaved: the bank that believes everything is robbed, and
+Numbers are in `results/SUMMARY.md`. The formulas match the simulation within 0.0015% at every attack checked.
+On the first run the worst error was 0.46%, and 0.75% for an attack added in part F, which is above the 0.5%
+I set. The cause was in the formula: it credited the attacker with reputation for the fee on the bank's loan,
+and a promise that is then broken earns none. The simulation had it right. Both controls behaved: the bank that believes everything is robbed, and
 an honest borrower climbing with the bank itself is offered 1.089 times more after each repayment at either
 trust.
 
@@ -121,7 +122,9 @@ What this shows:
   must treat them as one (prediction 5) or as nothing.
 - **The fee buys a margin of safe trust (part G, computed after the first run, no prediction).** With free
   identities, no ring of any size gains anything while the bank's trust in unknown counterparties is below
-  about 3.3 times the fee rate: 1.7%, 3.3%, 6.5% and 15.9% for fees of 0.5%, 1%, 2% and 5%. Above it the best
+  about 3.3 times the fee rate: 1.7%, 3.3%, 6.6% and 16.2% for fees of 0.5%, 1%, 2% and 5%. (A linear estimate,
+in the results as "first-order", is 2.5 times too generous: the attacker gains from many confederates
+faster than linearly.) Above it the best
   ring has around a hundred members. That much trust is too little to help an honest borrower (part E), so the
   practical rule is still to give unknown counterparties none. But it is the quantitative version of "the
   record is costly to fake": the fee sets how much unearned trust the system tolerates.
