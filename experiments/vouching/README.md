@@ -77,3 +77,42 @@ guaranteed repayment tells the sceptical bank nothing about the borrower, so the
 borrowing 10,000 alone. How a borrower should graduate is not answered. Sam's own standing is assumed, and so
 is what Sam knows about applicants. Recovery from a defaulter by the guarantor (who holds the claim) is taken
 as zero.
+
+## Outcome (2026-11-19)
+
+Numbers are in `results/SUMMARY.md`. All five predictions held, and the formulas match the simulation to
+1e-8. (The first run reported everything 37.5 too high: the dividends Sam collects anyway on the loan that
+gave them their standing. The results are now net of that.) Both controls failed as they should.
+
+| prediction | outcome |
+|---|---|
+| 1. a naive bank is robbed: 8,284 per fake borrower | Held: +8,284 each, with 1 or 5 of them. |
+| 2. a sceptical bank loses nothing; the ring is 601 worse off per fake borrower | Held: -601 each. The bank is 381 ahead per fake borrower: the interest on the guaranteed loan, less the stranger's loan it loses. |
+| 3. a guarantor can burn their standing once | Held: the bank loses 9,524 with 1, 5 or 20 fake borrowers when guarantees count against the guarantor's credit, and 9,524 times their number when they do not. |
+| 4. a vouch costs the guarantor their belief: 262, 1,242, 5,162 | Held: 261.2, 1,241.3 and 5,158.6 simulated, each within two standard errors. A vouch that goes wrong costs the guarantor 10,062.5 in the model; the bank is paid in full. |
+| 5. a vouch is worth buying above a 3.41% surplus | Held: -39 per loan at 3%, about zero at 3.41%, +246 at 6% (against +5 for the stranger's loan of 100). |
+
+What this shows:
+
+- **A guarantee is the answer to "where can a newcomer start?"** The lender needs no belief about the
+  newcomer. It needs one about the guarantor, and it has one. The newcomer borrows 10,000 on the first day
+  where a stranger gets 100.
+- **Two rules make it safe, and both follow from reading the record as evidence.** Count a guarantee against
+  the guarantor's own credit, since it is their promise: then a guarantor can lose the lender no more than
+  they could alone. And give a guaranteed repayment no weight as evidence about the borrower, since that
+  promise was made to the guarantor, who may be a confederate: `rain.record.weigh` does this without being
+  told, for any reader who trusts only its own dealings.
+- **A guarantor's price is their belief made visible.** The guarantor pays when the borrower does not, so the
+  least they can charge is their own estimate of that chance. This is the sense in which vouching is evidence:
+  the lender does not have to estimate how good the guarantor's judgement is, because the guarantor bears the
+  cost of being wrong.
+- **Faking through a guarantee costs fifteen times more than a plain wash** (6.0% of the amount against
+  0.625%), because the loan is real and the bank is paid interest on it. It still pays against a bank that
+  counts it.
+
+What it does not show, and what is now the open question: **graduation.** A sceptical bank learns nothing
+about the borrower from guaranteed loans, and with thresholds of tail index 1 it never raises a loan of its
+own. So in this model the newcomer needs the guarantor for ever. Something has to let a record made under a
+guarantee count for a little: the interest paid to the bank is a real cost, 4.8% of each loan, and that is
+evidence of a kind that a wash is not. That needs a belief in which paying to appear reliable is itself
+informative, which is the "fees as the cost of faking" direction and has not been derived.

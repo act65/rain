@@ -18,7 +18,8 @@ A *promise* is a recorded commitment by one user to another (an amount, an asset
 4.  **`ReputationClaimToken.sol` (RCT)**: a transferable claim on a defaulted promise, minted to the person it was owed to. While someone has claims outstanding against them they are *delinquent*: they cannot borrow or earn reputation.
 5.  **`Treasury.sol`**: pays the fees out to reputation holders as a dividend (a Merkle drop). Every fee goes into a payout fund, and each cycle shares out a fixed fraction of it: the reputation decay rate, which the Treasury reads from the reputation contract. In steady state that is what comes in; when fee income changes, dividends follow gradually, at the speed the supply of reputation does.
 6.  **`LoanScript.sol`**: a reference script, a fixed-term loan secured by a reputation bond.
-7.  **`CurrencyToken.sol` (DMD)**: a mintable ERC-20 standing in for a stablecoin.
+7.  **`GuaranteedLoanScript.sol`**: a second reference script, a loan that a guarantor answers for (vouching). It is two promises, borrower to guarantor and guarantor to lender, so a newcomer can borrow on the standing of someone the lender already knows (see `experiments/vouching/`).
+8.  **`CurrencyToken.sol` (DMD)**: a mintable ERC-20 standing in for a stablecoin.
 
 Why the rules are what they are (a fixed price per point, decay, fees paid out, no starting reputation) is recorded in `experiments/`, and the reasoning about what reputation should mean in `notes/bayesian-reputation.md`.
 
@@ -35,7 +36,7 @@ Why the rules are what they are (a fixed price per point, decay, fees paid out, 
 
 *   `contracts/token/`: `CurrencyToken.sol`, `RainReputation.sol`, `ReputationClaimToken.sol`
 *   `contracts/primitives/`: `CalculusEngine.sol`, `ReputationUpdater.sol`, `Treasury.sol`
-*   `contracts/scripts/`: `LoanScript.sol`
+*   `contracts/scripts/`: `LoanScript.sol`, `GuaranteedLoanScript.sol`
 *   `contracts/test/`: `MockDecaySchedule.sol`, a stand-in used only by the tests
 
 ### Off-Chain Python Library (`rain/`)

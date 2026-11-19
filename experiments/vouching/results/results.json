@@ -1,0 +1,166 @@
+{
+ "provenance": {
+  "utc": "2026-11-19T15:23:16+00:00",
+  "commit": "fcb6e5b",
+  "commit_short": "fcb6e5b",
+  "dirty": false,
+  "dirty_paths": "not recorded (stamp passed through the environment)",
+  "branch": null,
+  "python": "3.12.3",
+  "host": "devbox.europe-west4-a.c.dev-compute-d7766860.internal"
+ },
+ "parameters": {
+  "kappa": 0.04,
+  "delta": 0.03,
+  "r": 0.05,
+  "fee_rate": 0.01,
+  "min_fee": 0.1,
+  "interest": 0.05,
+  "sam_due": 10000.0,
+  "risk_tolerance": 0.020000001,
+  "floor": 100.0,
+  "tail_index": 1.0,
+  "shock_rate": 0.02
+ },
+ "stranger": {
+  "present_value": 89.7505670689292,
+  "bank_loss": 95.238037109375,
+  "offer": 100.0000001020408
+ },
+ "A": [
+  {
+   "fake_borrowers": 1,
+   "bank": "naive",
+   "offer": 10000.00002040816,
+   "present_value": 8373.866253721246,
+   "formula": 8373.866231468366,
+   "gain_over_strangers": 8284.115686652316,
+   "gain_per_fake_borrower": 8284.115686652316,
+   "bank_loss": 9047.619140625,
+   "relative_error": 2.6574200138359152e-09
+  },
+  {
+   "fake_borrowers": 1,
+   "bank": "sceptical",
+   "offer": 100.0000001020408,
+   "present_value": -511.4399095839218,
+   "formula": -511.4399092054708,
+   "gain_over_strangers": -601.190476652851,
+   "gain_per_fake_borrower": -601.190476652851,
+   "bank_loss": -380.952392578125,
+   "relative_error": 7.39971539982164e-10
+  },
+  {
+   "fake_borrowers": 5,
+   "bank": "naive",
+   "offer": 10000.00002040816,
+   "present_value": 41869.331573434974,
+   "formula": 41869.33115734183,
+   "gain_over_strangers": 41420.57873809033,
+   "gain_per_fake_borrower": 8284.115747618065,
+   "bank_loss": 45238.095703125,
+   "relative_error": 9.937897994058034e-09
+  },
+  {
+   "fake_borrowers": 5,
+   "bank": "sceptical",
+   "offer": 100.0000001020408,
+   "present_value": -2557.199544863489,
+   "formula": -2557.1995460273542,
+   "gain_over_strangers": -3005.952380208135,
+   "gain_per_fake_borrower": -601.190476041627,
+   "bank_loss": -1904.761962890625,
+   "relative_error": 4.5513278969735403e-10
+  }
+ ],
+ "B": [
+  {
+   "fake_borrowers": 1,
+   "guarantees_count_against_the_guarantor": true,
+   "present_value": 9323.809549826803,
+   "bank_loss": 9523.8095703125,
+   "loans": 1
+  },
+  {
+   "fake_borrowers": 1,
+   "guarantees_count_against_the_guarantor": false,
+   "present_value": 9323.809549826803,
+   "bank_loss": 9523.8095703125,
+   "loans": 1
+  },
+  {
+   "fake_borrowers": 5,
+   "guarantees_count_against_the_guarantor": true,
+   "present_value": 9323.809549827785,
+   "bank_loss": 9523.8095703125,
+   "loans": 1
+  },
+  {
+   "fake_borrowers": 5,
+   "guarantees_count_against_the_guarantor": false,
+   "present_value": 46619.04774913036,
+   "bank_loss": 47619.0478515625,
+   "loans": 5
+  },
+  {
+   "fake_borrowers": 20,
+   "guarantees_count_against_the_guarantor": true,
+   "present_value": 9323.809549808897,
+   "bank_loss": 9523.8095703125,
+   "loans": 1
+  },
+  {
+   "fake_borrowers": 20,
+   "guarantees_count_against_the_guarantor": false,
+   "present_value": 186476.1909965227,
+   "bank_loss": 190476.19140625,
+   "loans": 20
+  }
+ ],
+ "C": {
+  "vouch_cost": [
+   {
+    "opportunist_share": 0.0,
+    "formula": 262.5,
+    "simulated": 261.24,
+    "standard_error": 0.9868896626269813
+   },
+   {
+    "opportunist_share": 0.1,
+    "formula": 1242.5,
+    "simulated": 1241.27,
+    "standard_error": 2.2801536447244075
+   },
+   {
+    "opportunist_share": 0.5,
+    "formula": 5162.5,
+    "simulated": 5158.645,
+    "standard_error": 3.5348802058185025
+   }
+  ],
+  "covered_loan": {
+   "guarantor_present_value": -10062.49998349934,
+   "bank_loss": -476.1904296875
+  },
+  "fair_price": 262.5,
+  "surplus_threshold": 0.034125,
+  "borrower": [
+   {
+    "surplus_rate": 0.03,
+    "with_guarantor": -39.28571428571428,
+    "alone": 2.232142857142857
+   },
+   {
+    "surplus_rate": 0.0341,
+    "with_guarantor": -0.2380952380952408,
+    "alone": 2.622619047619047
+   },
+   {
+    "surplus_rate": 0.06,
+    "with_guarantor": 246.42857142857144,
+    "alone": 5.089285714285714
+   }
+  ]
+ },
+ "worst_relative_error": 9.937897994058034e-09
+}

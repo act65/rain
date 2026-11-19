@@ -32,6 +32,7 @@ contracts changed. `Economy()` still gives those rules so the experiments stay r
 | Damping a surge | `surge_fixes/` | Which rule change keeps a point below its cost through a surge in activity? (the winner, a payout fund, is now in the contracts) | run 2026-11-19 |
 | Collusion | `collusion/` | What does a record manufactured with confederates cost, whom can it rob, and how much trust in unknown counterparties is safe? | run 2026-11-19 |
 | The first loan | `first_loan/` | What should a lender risk on a stranger, how large is the first loan, and when should the next be larger? | run 2026-11-19 |
+| Vouching | `vouching/` | Can a guarantor answer for a newcomer without opening a way to rob the lender, and what does a vouch cost? | run 2026-11-19 |
 | What a default really costs | `standing_value/` | Dividends, access to credit and the option to start again: the full account of a default on a ladder | run 2026-11-19 |
 
 Each README states its predictions (written before the first run) and then the outcome.
