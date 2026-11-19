@@ -71,7 +71,11 @@ class Loan:
     interest: float
     bond: float
     fee_paid: float = 0.0
-    status: str = "requested"  # requested, cancelled, active, repaid, defaulted, resolved
+    status: str = "requested"  # requested, cancelled, active, repaid, defaulted, resolved; guaranteed loans also: called, covered, guarantor_defaulted
+    # A guaranteed loan (GuaranteedLoanScript) is two promises: the borrower's to the guarantor and
+    # the guarantor's to the lender, each for the amount due and each paying its own fee.
+    guarantor: Optional[str] = None
+    guarantor_fee: float = 0.0
 
 
 @dataclass
@@ -292,19 +296,59 @@ class Economy:
         self.release_stake(loan.borrower, loan.bond)
         self.fulfil_promise(loan.borrower, fee_paid=loan.fee_paid)
         self._record(loan, kept=True)
+        if loan.guarantor:  # the borrower's payment keeps the guarantor's promise to the lender too
+            self.fulfil_promise(loan.guarantor, fee_paid=loan.guarantor_fee)
+            self._record_guarantee(loan, kept=True)
         loan.status = "repaid"
 
     def default_loan(self, loan_id: int) -> None:
+        """The borrower misses the deadline. On a guaranteed loan the guarantor now holds the claim and owes the lender."""
         loan = self._loan(loan_id, "active")
         self.open_loans.discard(loan_id)
         self.forfeit_stake(loan.borrower, loan.bond)
         self.default_promise(loan.borrower, fee_paid=loan.fee_paid)
         self._record(loan, kept=False)
-        loan.status = "defaulted"
+        loan.status = "called" if loan.guarantor else "defaulted"
+
+    # --- guaranteed loans (GuaranteedLoanScript) ---
+
+    def guaranteed_loan(self, borrower: str, guarantor: str, lender: str, principal: float, interest: float = 0.0) -> int:
+        """Requests, guarantees and funds a loan that `guarantor` answers for. Both promisors pay the fee."""
+        if len({borrower, guarantor, lender}) != 3:
+            raise ValueError("Borrower, guarantor and lender must be three parties")
+        if self.agents[borrower].delinquent or self.agents[guarantor].delinquent:
+            raise ValueError("Borrower or guarantor is delinquent")
+        loan = Loan(borrower, lender, principal, interest, bond=0.0, guarantor=guarantor)
+        loan.fee_paid = self.make_promise(borrower, amount=principal + interest)
+        loan.guarantor_fee = self.make_promise(guarantor, amount=principal + interest)
+        self._pay(lender, borrower, principal)
+        loan.status = "active"
+        self.loans.append(loan)
+        return len(self.loans) - 1
+
+    def cover_loan(self, loan_id: int) -> None:
+        """The guarantor pays the lender what the borrower did not. The borrower still owes the guarantor."""
+        loan = self._loan(loan_id, "called")
+        self._pay(loan.guarantor, loan.lender, loan.principal + loan.interest)
+        self.fulfil_promise(loan.guarantor, fee_paid=loan.guarantor_fee)
+        self._record_guarantee(loan, kept=True)
+        loan.status = "covered"
+
+    def guarantor_default(self, loan_id: int) -> None:
+        """The guarantor does not pay either: the lender now holds a claim against the guarantor."""
+        loan = self._loan(loan_id, "called")
+        self.default_promise(loan.guarantor, fee_paid=loan.guarantor_fee)
+        self._record_guarantee(loan, kept=False)
+        loan.status = "guarantor_defaulted"
+
+    def _record_guarantee(self, loan: Loan, kept: bool) -> None:
+        self.log.append(Entry(promisor=loan.guarantor, promisee=loan.lender, amount=loan.principal + loan.interest,
+                              kept=kept, time=self.cycle, fee_paid=loan.guarantor_fee))
 
     def _record(self, loan: Loan, kept: bool) -> None:
-        self.log.append(Entry(promisor=loan.borrower, promisee=loan.lender, amount=loan.principal + loan.interest,
-                              kept=kept, time=self.cycle, fee_paid=loan.fee_paid))
+        # On a guaranteed loan the borrower's promise is to the guarantor, who answers to the lender.
+        self.log.append(Entry(promisor=loan.borrower, promisee=loan.guarantor or loan.lender,
+                              amount=loan.principal + loan.interest, kept=kept, time=self.cycle, fee_paid=loan.fee_paid))
 
     def resolve_default(self, loan_id: int, settlement: Optional[float] = None) -> None:
         """The defaulter buys the claim back (by default for the full amount owed) and burns it."""
