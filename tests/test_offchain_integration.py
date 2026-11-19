@@ -7,7 +7,6 @@ from helpers import E18, action_id_of, advance, chain, deploy_system, ev, revert
 
 from rain.dividends import calculate_dividend_shares, get_merkle_proof, get_reputation_holders
 from rain.reputation import (
-    REP_LOSS_ON_DEFAULT,
     process_promise_events,
     process_promise_log,
     to_update_tuples,
@@ -39,7 +38,7 @@ def run_oracle(s, from_block=0):
 
 # --- Oracle ---
 
-def test_oracle_rewards_kept_promises_and_punishes_broken_ones(system):
+def test_oracle_rewards_kept_promises_and_records_broken_ones(system):
     s = system
     repaid = loan(s, s.bob, s.alice)
     s.loan.repayLoan(repaid, sender=s.bob)
@@ -55,8 +54,11 @@ def test_oracle_rewards_kept_promises_and_punishes_broken_ones(system):
 
     assert s.rep.reputationScores(s.alice) == START_REP  # lending is not a promise
     assert s.rep.reputationScores(s.bob) == START_REP + s.reward
-    # Carol lost her bond at the moment of default, and the flat penalty when the oracle ran
-    assert s.rep.reputationScores(s.carol) == START_REP - STAKE - REP_LOSS_ON_DEFAULT
+    # Carol lost her bond at the moment of default. The oracle adds the promise to her broken
+    # counter with the weight it would have earned; it takes no further reputation.
+    assert s.rep.reputationScores(s.carol) == START_REP - STAKE
+    assert s.rep.brokenScores(s.carol) == s.reward
+    assert s.rep.brokenScores(s.bob) == s.rep.brokenScores(s.alice) == 0
     assert s.rep.totalReputation() == sum(s.rep.reputationScores(u) for u in (s.alice, s.bob, s.carol))
 
 
@@ -108,7 +110,7 @@ def test_promise_kept_while_delinquent_earns_nothing_and_blocks_nobody(system):
     _, _, withheld = run_oracle(s)
 
     assert [c["reason"] for c in withheld] == [f"PROMISE_FULFILLED:{promise_of(s, long_loan)}"]
-    assert s.rep.reputationScores(s.bob) == START_REP - STAKE - REP_LOSS_ON_DEFAULT
+    assert s.rep.reputationScores(s.bob) == START_REP - STAKE
     assert s.rep.reputationScores(s.carol) == START_REP + s.reward
 
     # Settling the debt later does not bring that reward back, even if the oracle re-reads the log
@@ -116,7 +118,7 @@ def test_promise_kept_while_delinquent_earns_nothing_and_blocks_nobody(system):
     s.rct.approve(s.loan.address, rct_id, sender=s.bob)
     s.loan.resolveDefault(rct_id, sender=s.bob)
     assert run_oracle(s)[2] == withheld
-    assert s.rep.reputationScores(s.bob) == START_REP - STAKE - REP_LOSS_ON_DEFAULT
+    assert s.rep.reputationScores(s.bob) == START_REP - STAKE
 
 
 def test_promise_kept_before_a_default_is_rewarded_however_late_the_oracle_runs(system):
@@ -136,7 +138,7 @@ def test_promise_kept_before_a_default_is_rewarded_however_late_the_oracle_runs(
 
     assert [c["reason"] for c in increases] == [f"PROMISE_FULFILLED:{promise_of(s, kept)}"]
     assert withheld == []
-    assert s.rep.reputationScores(s.bob) == START_REP + s.reward - STAKE - REP_LOSS_ON_DEFAULT
+    assert s.rep.reputationScores(s.bob) == START_REP + s.reward - STAKE
 
 
 def test_oracle_result_is_the_same_run_promptly_or_late():
@@ -157,14 +159,14 @@ def test_oracle_result_is_the_same_run_promptly_or_late():
                 run_oracle(s, from_block=seen)
                 seen = chain.blocks.height + 1
         run_oracle(s)
-        return s.rep.reputationScores(s.bob)
+        return s.rep.reputationScores(s.bob), s.rep.brokenScores(s.bob)
 
     prompt = history(deploy_system(), oracle_after_each_step=True)
     late = history(deploy_system(), oracle_after_each_step=False)
-    assert prompt == late == START_REP + 25 * E18 - STAKE - REP_LOSS_ON_DEFAULT
+    assert prompt == late == (START_REP + 25 * E18 - STAKE, 25 * E18)
 
 
-def test_default_penalty_applies_once_and_resolution_does_not_refund_it(system):
+def test_a_default_is_recorded_once_and_resolution_does_not_erase_it(system):
     s = system
     broken = loan(s, s.bob, s.alice)
     advance(DURATION + 1)
@@ -177,7 +179,9 @@ def test_default_penalty_applies_once_and_resolution_does_not_refund_it(system):
     s.loan.resolveDefault(rct_id, sender=s.bob)
 
     assert run_oracle(s, from_block=checkpoint + 1) == ([], [], [])
-    assert s.rep.reputationScores(s.bob) == START_REP - STAKE - REP_LOSS_ON_DEFAULT
+    assert run_oracle(s)[1] != []  # re-reading the whole log finds the default again; the updater skips it
+    assert s.rep.reputationScores(s.bob) == START_REP - STAKE  # the bond does not come back
+    assert s.rep.brokenScores(s.bob) == s.reward  # and the record stays (it fades with time)
 
 
 def test_replaying_the_log_does_not_double_count(system):
@@ -318,7 +322,13 @@ def test_dividend_drop_end_to_end(system):
 
 def test_user_with_no_reputation_gets_no_dividend_leaf(system):
     s = system
-    s.updater.applyReputationChanges([], [(s.carol.address, START_REP, "wiped out")], sender=s.oracle)
+    # A broken promise on the record does not change anyone's share: dividends follow reputation alone.
+    s.updater.applyReputationChanges([], [(s.carol.address, START_REP, "PROMISE_DEFAULTED:99")], sender=s.oracle)
+    shares, _, _ = calculate_dividend_shares(s.rep, get_reputation_holders(s.rep), 90 * E18)
+    assert [share["amount"] for share in shares] == [30 * E18] * 3
+
+    s.rep.grantRole(s.rep.UPDATER_ROLE(), s.admin, sender=s.admin)
+    s.rep.slash(s.carol, START_REP, sender=s.admin)  # wiped out
     shares, _, _ = calculate_dividend_shares(s.rep, get_reputation_holders(s.rep), 100 * E18)
     assert [share["account"] for share in shares] == [s.alice.address, s.bob.address]
     assert [share["amount"] for share in shares] == [50 * E18, 50 * E18]

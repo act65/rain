@@ -18,11 +18,6 @@ POINT_PRICE = 4 * E18 // 100
 # Reputation loses 3% every 30 days (a half-life of about two years).
 DECAY_PERIOD = PERIOD
 RETENTION_PER_PERIOD = 97 * E18 // 100
-# The Treasury pays fees out gradually: each dividend cycle shares out a fraction of its payout
-# fund equal to the reputation decay, one cycle per decay period. Dividends then follow fee
-# income at the speed the supply of reputation does, so a point is never worth more than it cost.
-RELEASE_PER_CYCLE = E18 - RETENTION_PER_PERIOD
-CYCLE_INTERVAL = DECAY_PERIOD
 TREASURY_CLAIM_PERIOD = PERIOD
 
 
@@ -47,13 +42,16 @@ def main():
     currency_token = project.CurrencyToken.deploy(sender=deployer)
     print(f"CurrencyToken (DMD) deployed at: {currency_token.address}")
 
-    treasury = project.Treasury.deploy(
-        currency_token.address, TREASURY_CLAIM_PERIOD, RELEASE_PER_CYCLE, CYCLE_INTERVAL, sender=deployer
-    )
-    print(f"Treasury deployed at: {treasury.address}")
-
     rain_reputation = project.RainReputation.deploy(DECAY_PERIOD, RETENTION_PER_PERIOD, sender=deployer)
     print(f"RainReputation (RAIN) deployed at: {rain_reputation.address}")
+
+    # The Treasury pays fees out gradually: each dividend cycle shares out the fraction of its
+    # payout fund that reputation loses per decay period, one cycle per period. It reads both
+    # from the reputation contract, so every point stays backed by its price in the fund.
+    treasury = project.Treasury.deploy(
+        currency_token.address, TREASURY_CLAIM_PERIOD, rain_reputation.address, sender=deployer
+    )
+    print(f"Treasury deployed at: {treasury.address}")
 
     # --- 3. DEPLOY PRIMITIVE & ENGINE CONTRACTS ---
     print("\nDeploying protocol engine contracts...")

@@ -1,7 +1,7 @@
 """
 Claims tested: a kept promise earns its promisor reputation in proportion to the fee paid, at
-the point price; a broken promise costs the flat penalty; each resolved promise yields at most
-one change; delinquent users are separated out.
+the point price; a broken promise is recorded with the same weight, and takes no reputation;
+each resolved promise yields at most one change; delinquent users are separated out.
 """
 from types import SimpleNamespace
 
@@ -9,7 +9,6 @@ import pytest
 
 from rain.reputation import (
     POINT,
-    REP_LOSS_ON_DEFAULT,
     delinquency_timeline,
     process_promise_events,
     process_promise_log,
@@ -48,12 +47,12 @@ def test_reward_rejects_bad_inputs():
 
 
 def test_reputation_changes():
-    increases, decreases = reputation_changes([(1, A, FEE), (2, B, 4 * FEE)], [(3, A)], PRICE)
+    increases, broken = reputation_changes([(1, A, FEE), (2, B, 4 * FEE)], [(3, A, 2 * FEE)], PRICE)
     assert increases == [
         {"user": A, "amount": REWARD, "reason": "PROMISE_FULFILLED:1"},
         {"user": B, "amount": 4 * REWARD, "reason": "PROMISE_FULFILLED:2"},
     ]
-    assert decreases == [{"user": A, "amount": REP_LOSS_ON_DEFAULT, "reason": "PROMISE_DEFAULTED:3"}]
+    assert broken == [{"user": A, "amount": 2 * REWARD, "reason": "PROMISE_DEFAULTED:3"}]
 
 
 def test_reputation_changes_empty():
@@ -65,9 +64,13 @@ def test_a_kept_promise_that_paid_no_fee_earns_nothing():
     assert [c["user"] for c in increases] == [B]
 
 
-def test_default_penalty_ignores_the_fee_paid():
-    _, decreases = reputation_changes([], [(1, A, 50 * FEE)], PRICE, rep_loss=9)
-    assert decreases == [{"user": A, "amount": 9, "reason": "PROMISE_DEFAULTED:1"}]
+def test_a_broken_promise_weighs_what_it_would_have_earned():
+    """Kept or broken, a promise is one observation of the same weight: the two counters share a unit."""
+    for fee in (FEE, 50 * FEE, 7):
+        kept, _ = reputation_changes([(1, A, fee)], [], PRICE)
+        _, broken = reputation_changes([], [(1, A, fee)], PRICE)
+        assert broken[0]["amount"] == kept[0]["amount"] == reward(fee, PRICE)
+    assert reputation_changes([], [(1, A, 0)], PRICE) == ([], [])  # no fee, no weight
 
 
 def test_one_change_per_promise_even_for_the_same_user():

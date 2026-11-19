@@ -2,7 +2,7 @@
 The pure-Python Economy model against the real contracts.
 
 One scenario is replayed through both: proportional fees, reputation earned in proportion to
-the fee, a default with a clamped penalty, a reward lost to delinquency, decay of scores and of
+the fee, a default (bond destroyed, broken promise recorded), a reward lost to delinquency, decay of scores and of
 an open bond, resolution, and two dividend cycles from the payout fund. The experiments in
 `experiments/` rely on the model, so this is the evidence that the model describes the protocol.
 """
@@ -38,6 +38,7 @@ def assert_same_state(s, eco):
         assert s.usdc.balanceOf(user) / E18 == pytest.approx(agent.money, abs=TOLERANCE), f"{name}: money"
         assert s.rep.reputationScores(user) / E18 == pytest.approx(agent.reputation, abs=TOLERANCE), f"{name}: reputation"
         assert s.rep.stakedReputation(user) / E18 == pytest.approx(agent.staked, abs=TOLERANCE), f"{name}: staked"
+        assert s.rep.brokenScores(user) / E18 == pytest.approx(agent.broken, abs=TOLERANCE), f"{name}: broken"
         assert s.rep.isDelinquent(user) == agent.delinquent, f"{name}: delinquent"
     assert s.rep.totalReputation() / E18 == pytest.approx(eco.total_reputation, abs=TOLERANCE)
     assert s.treasury.uncounted() / E18 == pytest.approx(eco.fee_pool, abs=TOLERANCE), "fees not yet in the fund"
@@ -88,7 +89,7 @@ def test_model_reproduces_the_contracts():
     assert eco.agents["bob"].fees_paid == pytest.approx(1.05)
 
     # 2. Carol takes a long loan from Bob (minimum fee), then a short one from Alice which she
-    #    defaults on (bond 950: the flat penalty is clamped), then repays the long one while delinquent.
+    #    defaults on (bond 950: destroyed; nothing else is taken), then repays the long one while delinquent.
     long_loan = chain_loan(s, s.carol, s.bob, 5, 1, 10, duration=10 * DURATION)
     short_loan = chain_loan(s, s.carol, s.alice, 300, 15, 950)
     advance(DURATION + 1)
@@ -103,7 +104,8 @@ def test_model_reproduces_the_contracts():
 
     run_oracle(s)  # the model's oracle is instantaneous; the chain's runs here
     assert_same_state(s, eco)
-    assert eco.agents["carol"].reputation == 0
+    assert eco.agents["carol"].reputation == pytest.approx(START - 950)
+    assert eco.agents["carol"].broken == pytest.approx(3.15 / POINT_PRICE)  # what repaying would have earned
     assert eco.agents["bob"].reputation == pytest.approx(START + 1.05 / POINT_PRICE)
 
     # 3. Alice requests a loan with a bond, and two decay periods pass before it is cancelled:

@@ -84,7 +84,7 @@ def main():
     if not increases and not decreases:
         print("\nNo reputation changes to commit.")
     else:
-        print(f"\nCommitting {len(increases)} increase(s) and {len(decreases)} decrease(s)...")
+        print(f"\nCommitting {len(increases)} kept promise(s) and {len(decreases)} broken promise(s)...")
         for change in increases + decreases:
             print(f"  - {change['reason']}: {change['user']}")
         tx = reputation_updater.applyReputationChanges(

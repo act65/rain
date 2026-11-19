@@ -38,7 +38,7 @@ def steady_world(point_price=KAPPA, fee_flow=1e6):
 def present_value(strategy, principal, reputation, bond, sigma, point_price=KAPPA, horizon=400):
     eco, tick = steady_world(point_price)
     eco.add_agent("lender", money=1e30)
-    borrower = eco.add_agent("borrower", money=1e12, reputation=reputation)
+    borrower = eco.add_agent("borrower", money=1e6, reputation=reputation)  # small, so that differences in it keep their precision
     interest = INTEREST * principal
 
     loan = eco.loan("borrower", "lender", principal, interest, bond)  # sunk: already funded

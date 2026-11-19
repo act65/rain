@@ -13,10 +13,10 @@ This implementation focuses on the **smart contract architecture, off-chain supp
 A *promise* is a recorded commitment by one user to another (an amount, an asset, a deadline). Anyone can write a *script*, a contract that records promises and moves value on behalf of users who authorized it. Reputation is what a user earns by keeping promises.
 
 1.  **`CalculusEngine.sol`**: the log of promises and transfers. Scripts are permissionless; a script can only act for users who authorized it, within the allowances they gave it. Every promise pays a fee to the Treasury: a percentage of the amount promised, with a minimum.
-2.  **`RainReputation.sol`**: the identity token (non-transferable) and the reputation ledger. A new identity has no reputation. Reputation decays by a fixed fraction each period. It can be bonded: a script holds the bond and either returns it or, on default, destroys it.
-3.  **Off-chain oracle and `ReputationUpdater.sol`**: the oracle reads the promise log and credits each kept promise with `fee paid / point price` reputation, so reputation has a fixed price and is a record of fees paid on kept promises. A broken promise costs a penalty. Each update is applied at most once.
+2.  **`RainReputation.sol`**: the identity token (non-transferable) and the reputation ledger. A new identity has no reputation. Reputation decays by a fixed fraction each period. It can be bonded: a script holds the bond and either returns it or, on default, destroys it. Beside it each account has a broken-promise counter in the same unit, fading at the same rate. The two are the evidence for a belief about the account: `reliability(user, priorKept, priorBroken)` gives the estimated chance that their next promise is kept, for a reader with that prior.
+3.  **Off-chain oracle and `ReputationUpdater.sol`**: the oracle reads the promise log and credits each kept promise with `fee paid / point price` reputation, so reputation has a fixed price and is a record of fees paid on kept promises. A broken promise adds the same weight to its promisor's broken-promise counter; it takes no reputation (the bond does that). Each update is applied at most once.
 4.  **`ReputationClaimToken.sol` (RCT)**: a transferable claim on a defaulted promise, minted to the person it was owed to. While someone has claims outstanding against them they are *delinquent*: they cannot borrow or earn reputation.
-5.  **`Treasury.sol`**: pays the fees out to reputation holders as a dividend (a Merkle drop). Every fee goes into a payout fund, and each cycle shares out a fixed fraction of it, equal to the reputation decay rate. In steady state that is what comes in; when fee income changes, dividends follow gradually, at the speed the supply of reputation does.
+5.  **`Treasury.sol`**: pays the fees out to reputation holders as a dividend (a Merkle drop). Every fee goes into a payout fund, and each cycle shares out a fixed fraction of it: the reputation decay rate, which the Treasury reads from the reputation contract. In steady state that is what comes in; when fee income changes, dividends follow gradually, at the speed the supply of reputation does.
 6.  **`LoanScript.sol`**: a reference script, a fixed-term loan secured by a reputation bond.
 7.  **`CurrencyToken.sol` (DMD)**: a mintable ERC-20 standing in for a stablecoin.
 
@@ -36,6 +36,7 @@ Why the rules are what they are (a fixed price per point, decay, fees paid out, 
 *   `contracts/token/`: `CurrencyToken.sol`, `RainReputation.sol`, `ReputationClaimToken.sol`
 *   `contracts/primitives/`: `CalculusEngine.sol`, `ReputationUpdater.sol`, `Treasury.sol`
 *   `contracts/scripts/`: `LoanScript.sol`
+*   `contracts/test/`: `MockDecaySchedule.sol`, a stand-in used only by the tests
 
 ### Off-Chain Python Library (`rain/`)
 

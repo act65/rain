@@ -13,7 +13,7 @@ Most tests use a Treasury that shares out its whole fund each cycle with no wait
 amounts are simple; the gradual release and the interval have their own tests at the end.
 """
 import pytest
-from helpers import E18, accounts, advance, ev, project, reverts
+from helpers import E18, accounts, advance, deploy_treasury, ev, project, reverts
 
 from rain.merkletree import OZMerkleTree, leaf_hash
 
@@ -31,13 +31,13 @@ def usdc():
 
 @pytest.fixture(scope="function")
 def treasury(usdc):
-    return project.Treasury.deploy(usdc.address, CLAIM_PERIOD, E18, 0, sender=accounts[0])  # release everything, no waiting
+    return deploy_treasury(accounts[0], usdc, CLAIM_PERIOD, (E18, 0))  # release everything, no waiting
 
 
 @pytest.fixture(scope="function")
 def gradual(usdc):
     """A Treasury that shares out a tenth of its fund per cycle, at most once a day."""
-    return project.Treasury.deploy(usdc.address, CLAIM_PERIOD, E18 // 10, DAY, sender=accounts[0])
+    return deploy_treasury(accounts[0], usdc, CLAIM_PERIOD, (E18 // 10, DAY))
 
 
 def make_cycle(treasury, usdc, rewards, fund=True):
@@ -69,11 +69,27 @@ def test_deployment(gradual, usdc):
     assert gradual.hasRole(gradual.MANAGER_ROLE(), admin)
     assert gradual.getNumberOfCycles() == 0
     assert (gradual.uncounted(), gradual.payoutFund(), gradual.distributable()) == (0, 0, 0)
+    schedule = gradual.decaySchedule()
     with reverts("USDC token address cannot be zero"):
-        project.Treasury.deploy("0x" + "00" * 20, CLAIM_PERIOD, E18, 0, sender=admin)
-    for bad_release in (0, E18 + 1):
-        with reverts("Release must be in (0, 1]"):
-            project.Treasury.deploy(usdc.address, CLAIM_PERIOD, bad_release, 0, sender=admin)
+        project.Treasury.deploy("0x" + "00" * 20, CLAIM_PERIOD, schedule, sender=admin)
+    with reverts("Decay schedule address cannot be zero"):
+        project.Treasury.deploy(usdc.address, CLAIM_PERIOD, "0x" + "00" * 20, sender=admin)
+
+
+def test_the_release_schedule_is_the_reputation_decay_and_cannot_be_changed(usdc):
+    """One rate: the fund pays out the fraction reputation loses per period, once per period."""
+    admin = accounts[0]
+    rep = project.RainReputation.deploy(30 * DAY, 97 * E18 // 100, sender=admin)
+    treasury = project.Treasury.deploy(usdc.address, CLAIM_PERIOD, rep.address, sender=admin)
+    assert treasury.decaySchedule() == rep.address
+    assert treasury.releasePerCycle() == E18 - rep.retentionPerPeriod() == 3 * E18 // 100
+    assert treasury.cycleInterval() == rep.decayPeriod() == 30 * DAY
+    assert not hasattr(treasury, "setRelease")
+
+    # Reputation that never decayed would never be paid.
+    everlasting = project.RainReputation.deploy(30 * DAY, E18, sender=admin)
+    with reverts("Reputation must decay for fees to be paid out"):
+        project.Treasury.deploy(usdc.address, CLAIM_PERIOD, everlasting.address, sender=admin)
 
 
 def test_fees_received_join_the_fund_at_the_next_cycle(treasury, usdc):
@@ -365,14 +381,3 @@ def test_set_claim_period(treasury, usdc):
     assert new['expiryTimestamp'] - new['creationTimestamp'] == 60
 
 
-def test_set_release(gradual):
-    admin, manager = accounts[0], accounts[5]
-    gradual.grantRole(gradual.MANAGER_ROLE(), manager, sender=admin)
-    with reverts("Admin only"):
-        gradual.setRelease(E18, 0, sender=manager)  # the manager runs cycles; it does not set the schedule
-    for bad in (0, E18 + 1):
-        with reverts("Release must be in (0, 1]"):
-            gradual.setRelease(bad, DAY, sender=admin)
-    tx = gradual.setRelease(E18 // 4, 2 * DAY, sender=admin)
-    assert (gradual.releasePerCycle(), gradual.cycleInterval()) == (E18 // 4, 2 * DAY)
-    assert (ev(tx)['ReleaseUpdated']['releasePerCycle'], ev(tx)['ReleaseUpdated']['cycleInterval']) == (E18 // 4, 2 * DAY)

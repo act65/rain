@@ -42,6 +42,7 @@ class Agent:
     money: float = 0.0
     reputation: float = 0.0
     staked: float = 0.0
+    broken: float = 0.0  # faded weight of broken promises (same unit as reputation)
     debts: int = 0  # outstanding claims (RCTs) against this agent
     dividends_received: float = 0.0
     fees_paid: float = 0.0
@@ -109,9 +110,10 @@ class Economy:
                       release: Optional[float] = None, **kwargs) -> "Economy":
         """
         An economy that follows the deployed contracts. `release` is the fraction of the payout
-        fund shared out per cycle; it defaults to the decay rate, which is how the contracts are
-        meant to be configured.
+        fund shared out per cycle; it defaults to the decay rate, which is what the Treasury
+        reads from the reputation contract (other values are for experiments only).
         """
+        kwargs.setdefault("rep_loss", 0.0)  # a broken promise is recorded; it does not reduce reputation
         return cls(fee=min_fee, fee_rate=fee_rate, point_price=point_price, decay_rate=decay_rate, pass_through=True,
                    smooth_payout=True, reserve_release=decay_rate if release is None else release, **kwargs)
 
@@ -207,10 +209,17 @@ class Economy:
             return
         self._oracle("increase", promisor, self.reward(fee_paid) * count)
 
-    def default_promise(self, promisor: str) -> None:
-        """A broken promise costs the flat penalty and leaves a claim against the promisor."""
+    def default_promise(self, promisor: str, fee_paid: Optional[float] = None) -> None:
+        """
+        A broken promise leaves a claim against the promisor. Where reputation has a price it is
+        added to their broken-promise counter with the weight it would have earned. `rep_loss`
+        (the original rules' flat penalty; zero under the current rules) is taken from their reputation.
+        """
         self.agents[promisor].debts += 1  # on-chain and immediate: the RCT is minted with the default
-        self._oracle("decrease", promisor, self.rep_loss)
+        if self.point_price is not None:
+            self._oracle("broken", promisor, self.reward(fee_paid))
+        if self.rep_loss:
+            self._oracle("decrease", promisor, self.rep_loss)
 
     def _oracle(self, kind: str, name: str, amount: float) -> None:
         if self.oracle_lag > 0:
@@ -221,6 +230,8 @@ class Economy:
     def _apply_update(self, kind: str, name: str, amount: float) -> None:
         if kind == "decrease":
             self._burn(name, amount)
+        elif kind == "broken":
+            self.agents[name].broken += amount
         else:
             self.agents[name].reputation += amount
             if self.vesting_cycles:
@@ -284,7 +295,7 @@ class Economy:
         loan = self._loan(loan_id, "active")
         self.open_loans.discard(loan_id)
         self.forfeit_stake(loan.borrower, loan.bond)
-        self.default_promise(loan.borrower)
+        self.default_promise(loan.borrower, fee_paid=loan.fee_paid)
         loan.status = "defaulted"
 
     def resolve_default(self, loan_id: int, settlement: Optional[float] = None) -> None:
@@ -356,6 +367,7 @@ class Economy:
             for agent in self.agents.values():
                 agent.reputation *= keep
                 agent.staked *= keep
+                agent.broken *= keep
                 for entry in agent.unvested:
                     entry[1] *= keep
             for loan_id in self.open_loans:

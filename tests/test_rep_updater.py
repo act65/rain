@@ -52,7 +52,7 @@ def test_apply_changes_permission(reputation_updater_contract, updater_account, 
     """
     # Arrange: Define some dummy data for the call
     increases = [(alice, 10, "Good deed")]
-    decreases = [(bob, 5, "Minor infraction")]
+    decreases = [(bob, 5, "Broke a promise")]
 
     # Act & Assert: The call should fail because updater_account does not have the role yet
     with reverts("Caller is not a trusted updater"):
@@ -67,7 +67,7 @@ def test_apply_reputation_changes(
     bob
 ):
     """
-    Tests the core functionality of increasing and decreasing reputation scores
+    Tests the core functionality of crediting kept promises and recording broken ones
     through the ReputationUpdater contract.
     """
     # --- ARRANGE ---
@@ -103,14 +103,16 @@ def test_apply_reputation_changes(
 
     # --- ASSERT ---
     # 1. Check the final reputation scores in the RainReputation contract
-    # Alice: 100 + 20 - 5 = 115
+    # Alice: 100 + 20 = 120, with 5 on her broken-promise counter (which does not reduce her reputation)
     # Bob:   100 + 10 = 110
-    assert rain_reputation_contract.reputationScores(alice) == 115
+    assert rain_reputation_contract.reputationScores(alice) == 120
+    assert rain_reputation_contract.brokenScores(alice) == 5
     assert rain_reputation_contract.reputationScores(bob) == 110
+    assert rain_reputation_contract.brokenScores(bob) == 0
 
     # 2. Check the total reputation
-    # Initial: 200. Changes: +20, +10, -5. Final: 225
-    assert rain_reputation_contract.totalReputation() == 225
+    # Initial: 200. Changes: +20, +10. Final: 230
+    assert rain_reputation_contract.totalReputation() == 230
 
     # 3. Check that the correct events were emitted from the RainReputation contract
     # The receipt includes events from external calls made during the transaction
@@ -119,8 +121,8 @@ def test_apply_reputation_changes(
     assert emitted_events['ReputationIncreased'][0]['amount'] == 20
     assert emitted_events['ReputationIncreased'][1]['user'] == bob
     assert emitted_events['ReputationIncreased'][1]['amount'] == 10
-    assert emitted_events['ReputationDecreased'][0]['user'] == alice
-    assert emitted_events['ReputationDecreased'][0]['amount'] == 5
+    assert emitted_events['BrokenPromiseRecorded'][0]['user'] == alice
+    assert emitted_events['BrokenPromiseRecorded'][0]['amount'] == 5
 
 def test_apply_empty_changes(reputation_updater_contract, admin, updater_account):
     """
@@ -161,9 +163,10 @@ def test_replayed_batch_is_skipped(wired, updater_account, alice, bob):
     updater.applyReputationChanges(increases, decreases, sender=updater_account)
     tx = updater.applyReputationChanges(increases, decreases, sender=updater_account)
 
-    assert rep.reputationScores(alice) == 125 and rep.reputationScores(bob) == 60
-    assert rep.totalReputation() == 185
-    assert 'ReputationIncreased' not in ev(tx) and 'ReputationDecreased' not in ev(tx)
+    assert rep.reputationScores(alice) == 125 and rep.reputationScores(bob) == 100
+    assert rep.brokenScores(bob) == 40  # recorded once
+    assert rep.totalReputation() == 225
+    assert 'ReputationIncreased' not in ev(tx) and 'BrokenPromiseRecorded' not in ev(tx)
     skipped = ev(tx)['UpdateSkipped']
     assert [(e['user'], e['reason'], e['why']) for e in skipped] == [
         (alice, "PROMISE_FULFILLED:1", "ALREADY_PROCESSED"),
@@ -207,5 +210,6 @@ def test_updater_applies_updates_whatever_the_users_delinquent_status(wired, upd
     tx = updater.applyReputationChanges(*batch, sender=updater_account)
 
     assert rep.reputationScores(bob) == 125
-    assert rep.reputationScores(alice) == 100 + 25 - 40
+    assert rep.reputationScores(alice) == 100 + 25
+    assert rep.brokenScores(alice) == 40
     assert 'UpdateSkipped' not in ev(tx)

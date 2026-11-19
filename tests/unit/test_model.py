@@ -237,6 +237,20 @@ def test_oracle_lag_delays_rewards_and_penalties_but_not_the_bond_or_the_flag():
     assert e.pending_updates == []
 
 
+def test_under_the_current_rules_a_default_is_recorded_and_takes_only_the_bond():
+    e = Economy.current_rules(min_fee=0.1, fee_rate=0.01, point_price=0.04, decay_rate=0.03)
+    for name in ("b", "bank"):
+        e.add_agent(name, money=1000, reputation=500)
+    e.default_loan(e.loan("b", "bank", principal=200, interest=10, bond=120))
+    b = e.agents["b"]
+    assert b.reputation == pytest.approx(500 - 120)  # the bond, and no flat penalty
+    assert b.broken == pytest.approx(2.1 / 0.04)  # the weight repaying would have earned
+    assert b.delinquent
+    e.pay_dividend()
+    assert b.broken == pytest.approx(0.97 * 2.1 / 0.04)  # the record fades with the reputation
+    assert b.reputation == pytest.approx(0.97 * 380)
+
+
 def test_reward_depends_on_status_when_the_promise_was_kept_not_when_the_oracle_runs():
     e = Economy(fee=1.0, oracle_lag=1)
     for name in ("a", "bank"):

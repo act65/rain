@@ -24,6 +24,15 @@ import "@openzeppelin/contracts/utils/Counters.sol";
  * Identity. A new identity starts with no reputation. Reputation is only ever
  * credited by the updater (for kept promises).
  *
+ * The record. Each account carries two counters, in the same unit (fee paid / point
+ * price) and fading at the same rate: reputation, earned by promises kept, and
+ * `brokenScores`, added to by promises broken. Together they are the evidence for a
+ * belief about the account: with a prior of `a` kept and `b` broken, the chance that
+ * the next promise is kept is estimated as (a + kept) / (a + b + kept + broken)
+ * (`reliability`). The prior is the reader's choice. A broken promise does not reduce
+ * reputation; a script that wants more at stake takes a bond. Dividends follow
+ * reputation alone.
+ *
  * Staking. A stake is a bond held by a *controller* (the contract that created it,
  * typically a script). Only the controller can release it back to the user or forfeit
  * it (destroy the staked reputation). A controller can only stake reputation the user
@@ -48,6 +57,7 @@ contract RainReputation is ERC721, AccessControl {
     struct Account {
         uint256 score; // as of `period`
         uint256 staked; // as of `period`
+        uint256 broken; // weight of broken promises, as of `period`
         uint256 period;
     }
     mapping(address => Account) private _accounts;
@@ -71,7 +81,7 @@ contract RainReputation is ERC721, AccessControl {
 
     // --- Events ---
     event ReputationIncreased(address indexed user, uint256 amount, string reason);
-    event ReputationDecreased(address indexed user, uint256 amount, string reason);
+    event BrokenPromiseRecorded(address indexed user, uint256 amount, string reason);
     event StakeApproval(address indexed user, address indexed controller, uint256 amount);
     event ReputationStaked(bytes32 indexed purposeId, address indexed controller, address indexed user, uint256 amount);
     event StakeReleased(bytes32 indexed purposeId, address indexed controller, address indexed user, uint256 amount);
@@ -123,6 +133,7 @@ contract RainReputation is ERC721, AccessControl {
         if (a.period != period) {
             a.score = _decayed(a.score, a.period);
             a.staked = _decayed(a.staked, a.period);
+            a.broken = _decayed(a.broken, a.period);
             a.period = period;
         }
     }
@@ -145,6 +156,24 @@ contract RainReputation is ERC721, AccessControl {
     function stakedReputation(address user) public view returns (uint256) {
         Account storage a = _accounts[user];
         return _decayed(a.staked, a.period);
+    }
+
+    /// @notice The faded weight of the promises `user` has broken, in the unit of reputation.
+    function brokenScores(address user) public view returns (uint256) {
+        Account storage a = _accounts[user];
+        return _decayed(a.broken, a.period);
+    }
+
+    /**
+     * @notice The estimated chance that `user` keeps their next promise, scaled by 1e18,
+     * for a reader whose belief about a stranger is `priorKept` kept to `priorBroken` broken
+     * (in points). Reputation destroyed by a forfeited bond or a slash no longer counts as kept.
+     */
+    function reliability(address user, uint256 priorKept, uint256 priorBroken) external view returns (uint256) {
+        uint256 kept = priorKept + reputationScores(user);
+        uint256 total = kept + priorBroken + brokenScores(user);
+        require(total > 0, "RAIN: No evidence and no prior");
+        return (kept * ONE) / total;
     }
 
     function totalReputation() public view returns (uint256) {
@@ -203,13 +232,14 @@ contract RainReputation is ERC721, AccessControl {
     }
 
     /**
-    * @notice Applies a routine, rule-based decrease to a user's reputation score
-    * (e.g. in response to a `PromiseDefaulted` event). Clamped at zero.
+    * @notice Records a broken promise of weight `amount` (the fee paid on it / the point
+    * price, the reputation it would have earned). Reputation is not reduced.
     */
-    function decreaseReputation(address user, uint256 amount, string calldata reason) external {
+    function recordBroken(address user, uint256 amount, string calldata reason) external {
         require(hasRole(UPDATER_ROLE, msg.sender), "Caller is not a trusted updater");
-        uint256 actualDecrease = _burnReputation(user, amount);
-        emit ReputationDecreased(user, actualDecrease, reason);
+        Account storage a = _sync(user);
+        a.broken += amount;
+        emit BrokenPromiseRecorded(user, amount, reason);
     }
 
     /**

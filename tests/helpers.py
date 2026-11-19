@@ -77,6 +77,17 @@ def seed_reputation(rep, admin, user, amount):
 MAX_UINT = 2**256 - 1
 
 
+def deploy_treasury(admin, usdc, claim_period, schedule):
+    """
+    A Treasury whose release schedule comes from `schedule`: a reputation contract (as in
+    production), or `(release_per_cycle, cycle_interval)` for a stand-in schedule with those values.
+    """
+    if isinstance(schedule, tuple):
+        release, cycle_interval = schedule
+        schedule = project.MockDecaySchedule.deploy(cycle_interval, E18 - release, sender=admin)
+    return project.Treasury.deploy(usdc.address, claim_period, schedule.address, sender=admin)
+
+
 def deploy_system(retention=E18, fee_bps=0, min_fee=E18, point_price=E18 // 25,
                   starting_reputation=1_000 * E18, release=E18, cycle_interval=0):
     """
@@ -87,13 +98,17 @@ def deploy_system(retention=E18, fee_bps=0, min_fee=E18, point_price=E18 // 25,
     Alice, Bob and Carol each hold 10,000 DMD and an identity, and have given the LoanScript
     every permission it needs over them (authorization to make promises, unlimited currency
     and stake allowances). Their `starting_reputation` is credited by the oracle.
+
+    By default reputation does not decay and each dividend cycle shares out the whole fund, so
+    that amounts in tests are exact; the Treasury then takes its schedule from a stand-in.
+    With `release=None` it reads the schedule from the reputation contract, as in production.
     """
     admin, oracle, alice, bob, carol = accounts[0:5]
     outsider = accounts[9]
 
     usdc = project.CurrencyToken.deploy(sender=admin)
-    treasury = project.Treasury.deploy(usdc.address, 7 * 24 * 60 * 60, release, cycle_interval, sender=admin)
     rep = deploy_reputation(admin, retention)
+    treasury = deploy_treasury(admin, usdc, 7 * 24 * 60 * 60, rep if release is None else (release, cycle_interval))
     engine = project.CalculusEngine.deploy(usdc.address, treasury.address, fee_bps, min_fee, point_price, sender=admin)
     rct = project.ReputationClaimToken.deploy(rep.address, engine.address, sender=admin)
     updater = project.ReputationUpdater.deploy(rep.address, sender=admin)

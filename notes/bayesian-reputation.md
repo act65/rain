@@ -92,8 +92,10 @@ to maximise the predictive likelihood on it, which is the "learn your own $\gamm
 ### What this says about the score
 
 Since this note was written the contracts have adopted decay, a reward proportional to the fee paid, and
-fees paid out to holders (`experiments/anchored_fee`). The on-chain score is still a single decaying number
-(fee-weighted kept promises); the points below about a second counter and the flat penalty are still open.
+fees paid out to holders (`experiments/anchored_fee`). On 2026-11-19 they also adopted the first and last
+points below: each account has a second fading counter for broken promises, weighted like kept ones by the
+fee paid, `RainReputation.reliability` returns the posterior mean for a prior the reader supplies, and the
+flat 100-point penalty is gone. The point about the maximum is still open.
 
 
 - The score should be two counters and a prior, read as $\hat p = (a_0 + K)/(a_0 + b_0 + K + B)$. A single

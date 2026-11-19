@@ -101,10 +101,28 @@ def test_reputation_earned_later_is_not_decayed_retroactively(rep):
 def test_penalties_apply_to_the_decayed_score(rep):
     updater, alice = accounts[1], accounts[2]
     advance(PERIOD)
-    tx = rep.decreaseReputation(alice, 2_000 * E18, "r", sender=updater)  # more than is left
-    assert ev(tx)['ReputationDecreased']['amount'] == 970 * E18
+    tx = rep.slash(alice, 2_000 * E18, sender=updater)  # more than is left
+    assert ev(tx)['ReputationSlashed']['amount'] == 970 * E18
     assert rep.reputationScores(alice) == 0
     assert rep.totalReputation() == 970 * E18  # Bob's
+
+
+def test_the_broken_promise_counter_fades_at_the_same_rate(rep):
+    updater, alice = accounts[1], accounts[2]
+    rep.recordBroken(alice, 400 * E18, "first", sender=updater)
+    advance(3 * PERIOD)
+    assert rep.brokenScores(alice) == kept(400 * E18, 3)
+    rep.recordBroken(alice, 100 * E18, "second", sender=updater)
+    advance(2 * PERIOD)
+    assert rep.brokenScores(alice) == kept(kept(400 * E18, 3) + 100 * E18, 2)
+    # Both counters fade together, so with no prior the belief does not move with time alone...
+    assert abs(rep.reliability(alice, 0, 0) - rep.reputationScores(alice) * E18 // (rep.reputationScores(alice) + rep.brokenScores(alice))) <= 1
+    # ...and with a prior it drifts towards the prior as the evidence fades.
+    prior = (30 * E18, 10 * E18)  # 0.75
+    before = rep.reliability(alice, *prior)
+    advance(60 * PERIOD)
+    after = rep.reliability(alice, *prior)
+    assert abs(after - 75 * E18 // 100) < abs(before - 75 * E18 // 100)
 
 
 def test_bond_decays_with_the_score_it_is_part_of(rep):

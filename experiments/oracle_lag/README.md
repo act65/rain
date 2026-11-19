@@ -116,3 +116,27 @@ section above.)
 With fees paid out through a fund released at the decay rate and no genesis allocation (`surge_fixes/`), the
 results are the same to three decimal places: defaulters +0.3%, +1.0%, +2.2%, +4.8%; the newcomer 0.952, 0.864,
 0.746, 0.556. `results/SUMMARY.md` is from this re-run.
+
+### Re-run after the two-counter change (2026-11-19)
+
+The contracts now keep two fading counters per account, reputation (promises kept) and a broken-promise
+counter, and a default no longer takes a flat 100 points: it costs the bond and an entry on the broken
+counter (`notes/bayesian-reputation.md`). The Treasury also reads its release rate from the reputation
+contract, so the two can no longer differ. No prediction was written before this re-run; it was a check that
+nothing else moved. `results/SUMMARY.md` is from the re-run.
+
+There is no flat penalty left to arrive late, so the oracle's lag now delays only rewards and the
+broken-promise record.
+
+| lag | defaulters' dividends, relative to no lag | before |
+|---|---|---|
+| 1 | +0.1% | +0.3% |
+| 3 | +0.35% | +1.0% |
+| 6 | +0.7% | +2.2% |
+| 12 | +1.6% | +4.8% |
+
+Honest agents (0.9993 to 1.0000) and the newcomer (0.952, 0.864, 0.746, 0.557) are as before. The defaulters'
+remaining gain is a third of what it was. My reading of it, not tested: rewards still waiting for the oracle
+cannot be bonded, so with a lag the bond (20% of liquid reputation here) is smaller and a default destroys
+less. The conclusion stands: run the oracle at least once per dividend cycle. One new cost of a lag: a lender
+reading the broken counter on-chain sees a default `L` cycles late. The delinquent flag is still immediate.

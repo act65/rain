@@ -6,13 +6,16 @@ import "@openzeppelin/contracts/access/AccessControl.sol";
 
 interface IRainReputation {
     function increaseReputation(address user, uint256 amount, string calldata reason) external;
-    function decreaseReputation(address user, uint256 amount, string calldata reason) external;
+    function recordBroken(address user, uint256 amount, string calldata reason) external;
 }
 
 /**
  * @title ReputationUpdater
  * @dev Receives the results of the off-chain Reputation Oracle and commits them to
  * the on-chain reputation ledger.
+ *
+ * A kept promise increases its promisor's reputation. A broken one is added to their
+ * broken-promise counter; it does not reduce their reputation.
  *
  * Each update is identified by `(user, reason)`, and is applied at most once: the
  * oracle must give every event a unique reason (e.g. "PROMISE_FULFILLED:42").
@@ -61,7 +64,7 @@ contract ReputationUpdater is AccessControl {
 
     function applyReputationChanges(
         ReputationUpdate[] calldata increases,
-        ReputationUpdate[] calldata decreases
+        ReputationUpdate[] calldata broken
     ) external {
         require(hasRole(UPDATER_ROLE, msg.sender), "Caller is not a trusted updater");
 
@@ -70,9 +73,9 @@ contract ReputationUpdater is AccessControl {
             rainReputation.increaseReputation(increases[i].user, increases[i].amount, increases[i].reason);
         }
 
-        for (uint i = 0; i < decreases.length; i++) {
-            if (!_claim(decreases[i])) continue;
-            rainReputation.decreaseReputation(decreases[i].user, decreases[i].amount, decreases[i].reason);
+        for (uint i = 0; i < broken.length; i++) {
+            if (!_claim(broken[i])) continue;
+            rainReputation.recordBroken(broken[i].user, broken[i].amount, broken[i].reason);
         }
     }
 }

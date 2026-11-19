@@ -5,15 +5,15 @@ It turns the CalculusEngine's promise log into reputation changes:
 
   - a kept promise earns its promisor `fee paid / point price` points, so reputation has
     a fixed price and is a record of fees paid on promises that were kept;
-  - a broken promise costs its promisor a flat penalty (on top of the bond the script
-    forfeits on-chain);
+  - a broken promise adds the same weight (the reputation it would have earned) to its
+    promisor's broken-promise counter. It does not reduce their reputation; the bond the
+    script forfeits on-chain does that;
   - a promise kept while its promisor was delinquent earns nothing.
 """
 
 from typing import Any, Dict, Iterable, List, Tuple
 
 POINT = 10**18  # reputation is stored with 18 decimals
-REP_LOSS_ON_DEFAULT = 100 * POINT  # Flat penalty for breaking a promise
 
 Change = Dict[str, Any]  # {"user": address, "amount": int, "reason": str}
 
@@ -32,29 +32,30 @@ def reward(fee_paid: int, point_price: int) -> int:
 
 def reputation_changes(
     fulfilled: Iterable[Tuple[int, str, int]],
-    defaulted: Iterable[Tuple[int, str]],
+    defaulted: Iterable[Tuple[int, str, int]],
     point_price: int,
-    rep_loss: int = REP_LOSS_ON_DEFAULT,
 ) -> Tuple[List[Change], List[Change]]:
     """
-    The pure rules. `fulfilled` holds `(promise_id, promisor, fee_paid)` and `defaulted`
-    holds `(promise_id, promisor)`.
+    The pure rules. `fulfilled` and `defaulted` both hold `(promise_id, promisor, fee_paid)`.
 
-    Returns `(increases, decreases)`. Each resolved promise yields at most one change,
-    whose `reason` names the promise so that changes can be audited against the log
-    (and so that the updater applies each one only once). A kept promise that paid no
-    fee earns nothing and yields no change.
+    Returns `(increases, broken)`: additions to reputation and to the broken-promise
+    counter. A promise weighs `fee_paid / point_price` points whether it was kept or
+    broken, so the two counters are in the same unit. Each resolved promise yields at
+    most one change, whose `reason` names the promise so that changes can be audited
+    against the log (and so that the updater applies each one only once). A promise
+    that paid no fee weighs nothing and yields no change.
     """
     increases = []
     for promise_id, promisor, fee_paid in fulfilled:
         amount = reward(fee_paid, point_price)
         if amount > 0:
             increases.append({"user": promisor, "amount": amount, "reason": f"PROMISE_FULFILLED:{promise_id}"})
-    decreases = [
-        {"user": promisor, "amount": rep_loss, "reason": f"PROMISE_DEFAULTED:{promise_id}"}
-        for promise_id, promisor, *_ in defaulted
-    ]
-    return increases, decreases
+    broken = []
+    for promise_id, promisor, fee_paid in defaulted:
+        amount = reward(fee_paid, point_price)
+        if amount > 0:
+            broken.append({"user": promisor, "amount": amount, "reason": f"PROMISE_DEFAULTED:{promise_id}"})
+    return increases, broken
 
 
 def _resolved_promises(engine_contract: Any, event_type: str, start_block: int, end_block: int):
@@ -76,14 +77,14 @@ def process_promise_events(
     """
     Reads `PromiseFulfilled` / `PromiseDefaulted` events from the CalculusEngine in
     the (inclusive) block range and applies the rules, at the engine's current point
-    price. Returns `(increases, decreases)`.
+    price. Returns `(increases, broken)`.
 
     This is the promise log alone: it does not know who was delinquent. The oracle
     uses `process_promise_log`, which does.
     """
     fulfilled = _resolved_promises(engine_contract, "PromiseFulfilled", start_block, end_block)
     defaulted = _resolved_promises(engine_contract, "PromiseDefaulted", start_block, end_block)
-    return reputation_changes([f[:3] for f in fulfilled], defaulted, engine_contract.pointPrice())
+    return reputation_changes([f[:3] for f in fulfilled], [d[:3] for d in defaulted], engine_contract.pointPrice())
 
 
 # --- Delinquency: a promise kept while delinquent earns nothing ---
@@ -115,7 +116,7 @@ def process_promise_log(
     engine_contract: Any, rain_reputation_contract: Any, start_block: int, end_block: int
 ) -> Tuple[List[Change], List[Change], List[Change]]:
     """
-    The oracle's full rule for a block range. Returns `(increases, decreases, withheld)`.
+    The oracle's full rule for a block range. Returns `(increases, broken, withheld)`.
 
     A kept promise is rewarded unless its promisor was delinquent at the moment it was
     kept; those rewards are returned in `withheld` and never submitted. Status is read
@@ -132,9 +133,9 @@ def process_promise_log(
         _, promisor, _, block, log_index = promise
         (lost if was_delinquent(timeline, promisor, block, log_index) else earned).append(promise[:3])
     point_price = engine_contract.pointPrice()
-    increases, decreases = reputation_changes(earned, defaulted, point_price)
+    increases, broken = reputation_changes(earned, [d[:3] for d in defaulted], point_price)
     withheld, _ = reputation_changes(lost, [], point_price)
-    return increases, decreases, withheld
+    return increases, broken, withheld
 
 
 def to_update_tuples(changes: List[Change]) -> List[Tuple[str, int, str]]:

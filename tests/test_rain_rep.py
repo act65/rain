@@ -128,11 +128,11 @@ def test_identity_and_reputation_are_independent(reputation_contract):
     assert reputation_contract.reputationScores(carol) == reputation_contract.totalReputation() == 5
 
 
-# --- increase / decrease / slash ---
+# --- increase / broken-promise record / slash ---
 
 @pytest.mark.parametrize("fn,args", [
     ("increaseReputation", (10, "r")),
-    ("decreaseReputation", (10, "r")),
+    ("recordBroken", (10, "r")),
     ("slash", (10,)),
 ])
 def test_only_updater_can_change_scores(ledger, fn, args):
@@ -141,6 +141,7 @@ def test_only_updater_can_change_scores(ledger, fn, args):
         with reverts("Caller is not a trusted updater"):
             getattr(ledger, fn)(alice, *args, sender=caller)
     assert ledger.reputationScores(alice) == 100
+    assert ledger.brokenScores(alice) == 0
 
 
 def test_increase_reputation(ledger):
@@ -160,25 +161,37 @@ def test_increase_can_create_reputation_for_a_user_without_an_sbt(ledger):
     assert ledger.reputationScores(stranger) == 5
 
 
-def test_decrease_reputation(ledger):
-    updater, alice = accounts[1], accounts[2]
-    tx = ledger.decreaseReputation(alice, 40, "PROMISE_DEFAULTED:1", sender=updater)
-    assert ledger.reputationScores(alice) == 60
-    assert ledger.totalReputation() == 160
-    event = ev(tx)['ReputationDecreased']
+def test_a_broken_promise_is_recorded_and_does_not_reduce_reputation(ledger):
+    updater, alice, bob = accounts[1], accounts[2], accounts[3]
+    tx = ledger.recordBroken(alice, 40, "PROMISE_DEFAULTED:1", sender=updater)
+    assert ledger.brokenScores(alice) == 40
+    assert ledger.reputationScores(alice) == 100  # untouched, and so is her share of dividends
+    assert ledger.totalReputation() == 200
+    assert ledger.getLiquidReputation(alice) == 100
+    event = ev(tx)['BrokenPromiseRecorded']
     assert (event['user'], event['amount'], event['reason']) == (alice, 40, "PROMISE_DEFAULTED:1")
 
+    ledger.recordBroken(alice, 1000, "PROMISE_DEFAULTED:2", sender=updater)  # not clamped by the score
+    assert ledger.brokenScores(alice) == 1040
+    assert ledger.brokenScores(bob) == 0
 
-def test_decrease_is_clamped_at_zero(ledger):
-    updater, alice = accounts[1], accounts[2]
-    tx = ledger.decreaseReputation(alice, 1000, "r", sender=updater)
-    assert ledger.reputationScores(alice) == 0
-    assert ledger.totalReputation() == 100  # only Bob's remains
-    assert ev(tx)['ReputationDecreased']['amount'] == 100  # the amount actually removed
 
-    tx = ledger.decreaseReputation(alice, 5, "r", sender=updater)
-    assert ev(tx)['ReputationDecreased']['amount'] == 0
-    assert ledger.totalReputation() == 100
+def test_reliability_is_the_posterior_mean_of_the_two_counters(ledger):
+    updater, alice, stranger = accounts[1], accounts[2], accounts[7]
+    E18 = 10**18
+    assert ledger.reliability(alice, 0, 0) == E18  # 100 kept, nothing broken, no prior
+    ledger.recordBroken(alice, 25, "r", sender=updater)
+    assert ledger.reliability(alice, 0, 0) == 100 * E18 // 125
+    assert ledger.reliability(alice, 60, 15) == 160 * E18 // 200  # prior of 60 kept to 15 broken
+
+    # A stranger is whatever the reader's prior says, and without a prior there is nothing to say.
+    assert ledger.reliability(stranger, 3, 1) == 3 * E18 // 4
+    with reverts("RAIN: No evidence and no prior"):
+        ledger.reliability(stranger, 0, 0)
+
+    # Reputation destroyed by a slash (or a forfeited bond) no longer counts as kept.
+    ledger.slash(alice, 100, sender=updater)
+    assert ledger.reliability(alice, 0, 0) == 0
 
 
 def test_slash(ledger):
@@ -202,7 +215,8 @@ def test_slash_is_clamped_at_zero(ledger):
 def test_total_reputation_tracks_the_sum_of_scores(ledger):
     updater, alice, bob = accounts[1], accounts[2], accounts[3]
     ledger.increaseReputation(alice, 7, "r", sender=updater)
-    ledger.decreaseReputation(bob, 300, "r", sender=updater)
+    ledger.slash(bob, 300, sender=updater)
+    ledger.recordBroken(alice, 50, "r", sender=updater)  # does not enter the total
     ledger.slash(alice, 3, sender=updater)
     ledger.increaseReputation(bob, 11, "r", sender=updater)
     ledger.slash(bob, 500, sender=updater)
@@ -241,9 +255,10 @@ def test_ledger_does_not_police_delinquency(ledger):
     updater, alice, rct = accounts[1], accounts[2], accounts[8]
     ledger.setDelinquentStatus(alice, True, sender=rct)
     ledger.increaseReputation(alice, 1, "earned before the default", sender=updater)
-    ledger.decreaseReputation(alice, 10, "r", sender=updater)
+    ledger.recordBroken(alice, 10, "r", sender=updater)
     ledger.slash(alice, 10, sender=updater)
-    assert ledger.reputationScores(alice) == 81
+    assert ledger.reputationScores(alice) == 91
+    assert ledger.brokenScores(alice) == 10
     assert ledger.isDelinquent(alice)
 
 
@@ -423,7 +438,7 @@ def test_score_can_fall_below_the_stake_without_breaking_anything(ledger):
 def test_release_after_score_fell_below_the_stake(ledger):
     updater, alice = accounts[1], accounts[2]
     ledger.stake(alice, 80, purpose(1), sender=alice)
-    ledger.decreaseReputation(alice, 50, "r", sender=updater)
+    ledger.slash(alice, 50, sender=updater)
     ledger.releaseStake(purpose(1), sender=alice)
     assert ledger.getLiquidReputation(alice) == ledger.reputationScores(alice) == 50
 
@@ -459,6 +474,7 @@ def test_stateful_ledger_matches_a_simple_model(ledger):
             chain.restore(start["snapshot"])
             start["snapshot"] = chain.snapshot()
             self.scores = [ledger.reputationScores(u) for u in users]
+            self.broken = [0 for _ in users]
             self.staked = [0 for _ in users]
             self.open_stakes = []  # (purposeId, user index, amount), all controlled by the user
             self.next_purpose = 1
@@ -469,9 +485,9 @@ def test_stateful_ledger_matches_a_simple_model(ledger):
             self.scores[i] += amount
 
         @rule(i=st_user, amount=st_amount)
-        def decrease(self, i, amount):
-            ledger.decreaseReputation(users[i], amount, "r", sender=updater)
-            self.scores[i] = max(0, self.scores[i] - amount)
+        def record_broken(self, i, amount):
+            ledger.recordBroken(users[i], amount, "r", sender=updater)
+            self.broken[i] += amount
 
         @rule(i=st_user, amount=st_amount)
         def slash(self, i, amount):
@@ -511,6 +527,7 @@ def test_stateful_ledger_matches_a_simple_model(ledger):
             for i, user in enumerate(users):
                 assert ledger.reputationScores(user) == self.scores[i]
                 assert ledger.stakedReputation(user) == self.staked[i]
+                assert ledger.brokenScores(user) == self.broken[i]
                 assert ledger.getLiquidReputation(user) == max(0, self.scores[i] - self.staked[i])
             assert ledger.totalReputation() == sum(self.scores)
 

@@ -12,7 +12,7 @@ from rain import economics as ec
 V = 0.4  # value of a point, for the examples
 
 
-def test_constants_match_the_oracle_rules():
+def test_constants_of_the_original_rules():
     assert (ec.REP_GAIN, ec.REP_LOSS) == (25.0, 100.0)
 
 
@@ -132,10 +132,12 @@ def test_current_point_value():
 
 
 def test_current_default_gain_by_hand():
-    # Loan 1000 at 5%: due 1050, fee 10.5. Reputation 5000, bond 2000: at stake 2100 points worth 31.5.
-    # Forgone reward: 10.5 * 0.375 = 3.9375. No surplus, so no access value.
+    # Loan 1000 at 5%: due 1050, fee 10.5. Reputation 5000, bond 2000: at stake the bond, worth 30
+    # (unbonded reputation is not touched). Forgone reward: 10.5 * 0.375 = 3.9375. No surplus, so no access value.
     gain = ec.current_default_gain(1000, 0.05, 5000, 2000, **CURRENT)
-    assert gain == pytest.approx(1050 - 31.5 - 3.9375)
+    assert gain == pytest.approx(1050 - 30 - 3.9375)
+    # A flat penalty of 100 points, as the original rules had, would put 1.5 more at stake.
+    assert ec.current_default_gain(1000, 0.05, 5000, 2000, rep_loss=100, **CURRENT) == pytest.approx(gain - 1.5)
     # With a 2% surplus: access is worth (20 - 10.5 * 0.625) / 0.05 = 268.75
     assert ec.current_default_gain(1000, 0.05, 5000, 2000, surplus_rate=0.02, **CURRENT) == pytest.approx(gain - 268.75)
 

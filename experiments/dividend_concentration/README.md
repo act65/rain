@@ -105,3 +105,23 @@ Fees now reach holders through a payout fund released at the decay rate (`surge_
 genesis allocation. Re-run under that design: every row is within 0.002 of the above except unreliable agents'
 dividends over fees at decay 0.005 (0.198, was 0.211). All five predictions still hold. (The no-decay arm has
 no decay rate to release at; it uses 3% per cycle.) `results/SUMMARY.md` is from the re-run.
+
+### Re-run after the two-counter change (2026-11-19)
+
+The contracts now keep two fading counters per account, reputation (promises kept) and a broken-promise
+counter, and a default no longer takes a flat 100 points: it costs the bond and an entry on the broken
+counter (`notes/bayesian-reputation.md`). The Treasury also reads its release rate from the reputation
+contract, so the two can no longer differ. No prediction was written before this re-run; it was a check that
+nothing else moved. `results/SUMMARY.md` is from the re-run.
+
+Unreliable agents keep more than before, since a default now destroys only the bond:
+
+| measure (decay 0.03) | before | now |
+|---|---|---|
+| unreliable agents' standing relative to reliable early agents, cycle 800 | 0.236 | 0.414 |
+| unreliable agents: dividends / fees | 0.517 | 0.645 |
+| reliable agents: dividends / fees | 1.095 | 1.070 |
+
+Prediction 4 (unreliable agents' standing below 0.6) still holds, by less. The other rows moved by under 0.005.
+The standing compared here is reputation alone. The broken counter, which now carries the record of the
+defaults, is not in this measure.

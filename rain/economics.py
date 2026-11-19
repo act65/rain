@@ -24,10 +24,9 @@ from __future__ import annotations
 
 import math
 
-from rain.reputation import REP_LOSS_ON_DEFAULT
 
 REP_GAIN = 25.0  # points earned by a kept promise under the original rules (flat reward)
-REP_LOSS = REP_LOSS_ON_DEFAULT / 10**18  # flat points lost on default, on top of the bond
+REP_LOSS = 100.0  # original rules: flat points lost on default, on top of the bond (the current rules take none)
 
 
 def point_value(dividend_per_cycle: float, total_reputation: float, r: float) -> float:
@@ -187,13 +186,14 @@ def current_point_value(point_price: float, r: float, decay_rate: float) -> floa
 def current_default_gain(
     principal: float, interest_rate: float, reputation: float, bond: float,
     point_price: float, r: float, decay_rate: float, fee_rate: float, min_fee: float = 0.0,
-    surplus_rate: float = 0.0, rep_loss: float = REP_LOSS,
+    surplus_rate: float = 0.0, rep_loss: float = 0.0,
 ) -> float:
     """
     Net present gain from defaulting instead of repaying, under the current rules (steady supply).
 
-    The defaulter keeps the amount due. They lose the bond and the flat penalty (each point
-    worth v = point_price * delta / (r + delta)), the reward for repaying (fee / point_price
+    The defaulter keeps the amount due. They lose the bond (each point worth
+    v = point_price * delta / (r + delta); `rep_loss` adds a flat penalty in points, which
+    the current rules do not have), the reward for repaying (fee / point_price
     points, so worth fee * delta / (r + delta)), and access to future loans. Each future loan
     yields `surplus_rate * principal`, costs its fee and returns reputation worth
     delta / (r + delta) of that fee, so access is worth
@@ -211,7 +211,7 @@ def current_default_gain(
 def current_max_safe_loan(
     interest_rate: float, reputation: float, bond: float,
     point_price: float, r: float, decay_rate: float, fee_rate: float, min_fee: float = 0.0,
-    surplus_rate: float = 0.0, rep_loss: float = REP_LOSS,
+    surplus_rate: float = 0.0, rep_loss: float = 0.0,
 ) -> float:
     """
     The largest principal such that repaying is at least as good as defaulting for every loan

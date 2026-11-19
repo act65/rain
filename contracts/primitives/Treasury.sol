@@ -7,6 +7,12 @@ import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/utils/cryptography/MerkleProof.sol";
 import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
 
+/// @dev The rate at which reputation fades (implemented by RainReputation).
+interface IDecaySchedule {
+    function decayPeriod() external view returns (uint256);
+    function retentionPerPeriod() external view returns (uint256);
+}
+
 /**
  * @title Treasury
  * @author Rain Protocol
@@ -18,11 +24,13 @@ import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
  * (`releasePerCycle`). In steady state that is exactly what comes in. When fee income
  * changes, dividends follow it at the release rate instead of jumping.
  *
- * The release rate should equal the rate at which reputation decays, with one cycle
- * per decay period. Then dividends and the supply of reputation respond to a change in
- * activity at the same speed, and the dividend per point of reputation stays level: a
- * point is never worth more than it cost, at start-up or after a surge. (See
- * experiments/surge_fixes.)
+ * The release rate is the rate at which reputation decays, with one cycle per decay
+ * period. Both are read from the reputation contract at deployment and cannot be
+ * changed. Fees then enter the fund at the point price per point of reputation issued,
+ * and the fund and the supply of reputation shrink at the same rate, so every point is
+ * backed by its price in the fund whatever anyone else does: a point is never worth
+ * more than it cost, at start-up, after a surge, or to someone who generates most of
+ * the promises. (See experiments/surge_fixes.)
  *
  * Money in the Treasury is in exactly one of three places:
  *   - reserved for a dividend cycle: promised to holders until claimed, or until the
@@ -41,8 +49,9 @@ contract Treasury is AccessControl, ReentrancyGuard {
 
     uint256 public reservedForDividends; // unclaimed funds of dividend cycles that have not been recovered
     uint256 public payoutFund;
-    uint256 public releasePerCycle; // fraction of the fund shared out by each cycle, scaled by 1e18
-    uint256 public cycleInterval; // least time between two cycles, in seconds
+    address public immutable decaySchedule; // the reputation contract
+    uint256 public immutable releasePerCycle; // fraction of the fund shared out by each cycle, scaled by 1e18
+    uint256 public immutable cycleInterval; // least time between two cycles, in seconds
     uint256 public lastCycleTimestamp;
 
     struct DividendCycle {
@@ -61,25 +70,22 @@ contract Treasury is AccessControl, ReentrancyGuard {
     event DividendClaimed(uint256 indexed cycleId, address indexed user, uint256 amountClaimed);
     event FundsRecovered(uint256 indexed cycleId, uint256 amountRecovered);
     event ClaimPeriodUpdated(uint256 newDuration);
-    event ReleaseUpdated(uint256 releasePerCycle, uint256 cycleInterval);
 
     /**
-     * @param _releasePerCycle Fraction of the payout fund each cycle shares out, scaled by 1e18.
-     * Set it to the reputation decay per period (1e18 - RainReputation.retentionPerPeriod).
-     * @param _cycleInterval Least time between cycles. Set it to RainReputation.decayPeriod.
+     * @param _decaySchedule The reputation contract. Each cycle shares out the fraction of
+     * the fund that reputation loses per decay period, and cycles are one decay period apart.
+     * Reputation that never decays would never be paid, so that is refused.
      */
-    constructor(
-        address _usdcTokenAddress,
-        uint256 _initialClaimPeriodDuration,
-        uint256 _releasePerCycle,
-        uint256 _cycleInterval
-    ) {
+    constructor(address _usdcTokenAddress, uint256 _initialClaimPeriodDuration, address _decaySchedule) {
         require(_usdcTokenAddress != address(0), "USDC token address cannot be zero");
-        require(_releasePerCycle > 0 && _releasePerCycle <= ONE, "Release must be in (0, 1]");
+        require(_decaySchedule != address(0), "Decay schedule address cannot be zero");
+        uint256 retention = IDecaySchedule(_decaySchedule).retentionPerPeriod();
+        require(retention < ONE, "Reputation must decay for fees to be paid out");
         usdcToken = IERC20(_usdcTokenAddress);
         claimPeriodDuration = _initialClaimPeriodDuration;
-        releasePerCycle = _releasePerCycle;
-        cycleInterval = _cycleInterval;
+        decaySchedule = _decaySchedule;
+        releasePerCycle = ONE - retention;
+        cycleInterval = IDecaySchedule(_decaySchedule).decayPeriod();
         lastCycleTimestamp = block.timestamp;
 
         _grantRole(DEFAULT_ADMIN_ROLE, msg.sender);
@@ -186,15 +192,6 @@ contract Treasury is AccessControl, ReentrancyGuard {
         require(_newDuration > 0, "Claim period must be positive");
         claimPeriodDuration = _newDuration;
         emit ClaimPeriodUpdated(_newDuration);
-    }
-
-    /// @notice Changes the release schedule. Keep it in step with the reputation decay (see the contract notes).
-    function setRelease(uint256 _releasePerCycle, uint256 _cycleInterval) external {
-        require(hasRole(DEFAULT_ADMIN_ROLE, msg.sender), "Admin only");
-        require(_releasePerCycle > 0 && _releasePerCycle <= ONE, "Release must be in (0, 1]");
-        releasePerCycle = _releasePerCycle;
-        cycleInterval = _cycleInterval;
-        emit ReleaseUpdated(_releasePerCycle, _cycleInterval);
     }
 
     // --- Getters ---

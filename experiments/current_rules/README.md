@@ -143,3 +143,21 @@ through a surge.
 So of the list under "What changed from the original rules", the "new exposure" no longer applies. The two
 items marked "not fixed" stand: they are about what a bond can secure and what lenders choose to do, and
 `standing_value/` gives the fuller account of the first.
+
+### Re-run after the two-counter change (2026-11-19)
+
+The contracts now keep two fading counters per account, reputation (promises kept) and a broken-promise
+counter, and a default no longer takes a flat 100 points: it costs the bond and an entry on the broken
+counter (`notes/bayesian-reputation.md`). The Treasury also reads its release rate from the reputation
+contract, so the two can no longer differ. No prediction was written before this re-run; it was a check that
+nothing else moved. `results/SUMMARY.md` is from the re-run.
+
+| part | what changed |
+|---|---|
+| A | The largest safe loan is smaller wherever some reputation was unbonded, because the flat penalty used to add up to 100 points to what a default cost. Reputation 500, bond 100: 1.46 DMD (was 2.89). Reputation 5000, bond 1000: 14.3 (was 15.8). Fully bonded rows are unchanged. The demo's second loan is now 341 times too large for its bond (was 267). Fees per unit of bond-backed credit are still 2.67. |
+| B, C, D | Unchanged. |
+
+The formula still matches the simulation: worst relative error 8.8e-06. The first re-run showed 6.9e-03 at one
+grid point, above the 0.5% tolerance. That was rounding in the simulation, not a disagreement: the borrower
+held 1e12 DMD, so differences in their balance were only good to about 0.001 DMD, and the smaller safe loan
+made that visible. The borrower now holds 1e6.

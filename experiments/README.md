@@ -39,6 +39,7 @@ Each README states its predictions (written before the first run) and then the o
 - Time is in dividend cycles. `r` is the discount rate per cycle.
 - `v` is the value of one reputation point: the present value of the dividends it will collect.
 - A kept promise costs the fee `f = m * v * g` (`m` the keeper's safety margin, `g = 25` points).
-- Baseline parameters are the protocol defaults: `m = 1.5`, `r = 0.05`, `g = 25`, flat default penalty 100 points.
+- Baseline parameters of the original rules: `m = 1.5`, `r = 0.05`, `g = 25`, flat default penalty 100 points.
+  (The current rules have no flat penalty: a default costs the bond and is recorded on a broken-promise counter.)
 - "Demo" refers to the numbers produced by `scripts/run_simulation.py`: one 5 DMD dividend over 325 points
   (so `v = 0.3077` DMD per point), and a 1000 DMD loan at 5% against a 50-point bond.
