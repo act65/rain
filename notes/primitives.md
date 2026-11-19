@@ -37,11 +37,11 @@ This interpreter model is what guarantees the security and integrity of the ecos
 
 *   `monitoredAction(user)`
     *   **Purpose:** The mandatory entry point for any economic session.
-    *   **Function:** Charges the `protocolFee` and creates a unique `actionId`.
+    *   **Function:** Creates a unique `actionId` that only the calling script can add to. Free. The `user` must have authorized the script.
 
 *   `monitoredPromise(actionId, ...)`
     *   **Purpose:** To create a verifiable, future obligation.
-    *   **Function:** Logs a promise and links it to a fee-paid `actionId`.
+    *   **Function:** Logs a promise, links it to the `actionId`, and charges the fee to the promisor: a percentage of the amount promised, with a minimum. The fee paid is recorded with the promise, and a kept promise earns reputation in proportion to it (`fee / pointPrice`). The promisor must have authorized the script, and cannot be the promisee.
 
 *   `monitoredTransfer(actionId, ...)` & `monitoredNftTransfer(actionId, ...)`
     *   **Purpose:** To execute a value transfer of a fungible (ERC20) or non-fungible (ERC721) token.
@@ -54,12 +54,27 @@ This interpreter model is what guarantees the security and integrity of the ecos
 ##### **`RainReputation` Primitives (The Collateral Vault)**
 
 *   `stake(user, amount, purposeId)`
-    *   **Purpose:** To lock reputation as collateral against a specific promise.
-    *   **Function:** Marks a portion of a user's reputation as "staked," linking it to a `purposeId` (e.g., a `promiseId`).
+    *   **Purpose:** To lock reputation as a bond.
+    *   **Function:** Marks a portion of a user's reputation as "staked" under `purposeId`. A bond decays at the same rate as the score it is part of. The caller becomes the stake's **controller**. A script can only stake what the user allowed it to with `approveStake`.
 
 *   `releaseStake(purposeId)`
-    *   **Purpose:** To unlock reputation once an obligation is met.
-    *   **Function:** Releases the stake associated with the `purposeId`.
+    *   **Purpose:** To return the bond once an obligation is met.
+    *   **Function:** Releases the stake. Only its controller can call this (so a borrower cannot unlock their own bond).
+
+*   `forfeitStake(purposeId)`
+    *   **Purpose:** To make a broken promise cost something that scales with what was at stake.
+    *   **Function:** Destroys the staked reputation. Only the stake's controller can call this.
+
+##### **Permissions: scripts are permissionless, users are not powerless**
+
+Anyone can deploy a script; no protocol role is involved. A script has exactly the powers each user grants *that script*:
+
+*   `CalculusEngine.setScriptAuthorization(script, bool)`: the script may open actions and make promises in your name.
+*   `CalculusEngine.approveScript(script, asset, amount)`: the script may move this much of your tokens (including the protocol fees you owe). An allowance given to one script is useless to another.
+*   `CalculusEngine.setScriptNftApproval(script, asset, bool)`: the script may move your NFTs of a collection.
+*   `RainReputation.approveStake(script, amount)`: the script may bond (and on default destroy) this much of your reputation.
+
+The `ReputationClaimToken` needs no minter role either: an RCT can only be minted for a promise the engine records as `Defaulted`, by that promise's script, once, with terms copied from the log.
 
 #### **5. Economic Completeness & Future Extensibility**
 

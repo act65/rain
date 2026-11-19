@@ -1,0 +1,569 @@
+{
+ "provenance": {
+  "utc": "2026-11-19T12:36:09+00:00",
+  "commit": "1805efb4da4a5bc732af019382b5f685b96ce8d0",
+  "commit_short": "1805efb",
+  "dirty": true,
+  "dirty_paths": "not recorded (stamp passed through the environment)",
+  "branch": null,
+  "python": "3.12.3",
+  "host": "devbox.europe-west4-a.c.dev-compute-d7766860.internal"
+ },
+ "part_a": [
+  {
+   "reputation": 200,
+   "bond": 40.0,
+   "v": 0.05,
+   "sigma": 0.0,
+   "formula": 7.857142857142857,
+   "simulated": 7.856619698660712,
+   "relative_error": 6.658380681845635e-05
+  },
+  {
+   "reputation": 200,
+   "bond": 40.0,
+   "v": 0.05,
+   "sigma": 0.03,
+   "formula": 7.857142857142857,
+   "simulated": 7.856619698660712,
+   "relative_error": 6.658380681845635e-05
+  },
+  {
+   "reputation": 200,
+   "bond": 40.0,
+   "v": 0.05,
+   "sigma": 0.045,
+   "formula": 7.857142857142857,
+   "simulated": 7.856619698660712,
+   "relative_error": 6.658380681845635e-05
+  },
+  {
+   "reputation": 200,
+   "bond": 40.0,
+   "v": 0.3077,
+   "sigma": 0.0,
+   "formula": 48.35285714285714,
+   "simulated": 48.3537365141369,
+   "relative_error": 1.8186542258718402e-05
+  },
+  {
+   "reputation": 200,
+   "bond": 40.0,
+   "v": 0.3077,
+   "sigma": 0.03,
+   "formula": 48.35285714285714,
+   "simulated": 48.3537365141369,
+   "relative_error": 1.8186542258718402e-05
+  },
+  {
+   "reputation": 200,
+   "bond": 40.0,
+   "v": 0.3077,
+   "sigma": 0.045,
+   "formula": 48.35285714285714,
+   "simulated": 48.3537365141369,
+   "relative_error": 1.8186542258718402e-05
+  },
+  {
+   "reputation": 200,
+   "bond": 200.0,
+   "v": 0.05,
+   "sigma": 0.0,
+   "formula": 10.714285714285714,
+   "simulated": 10.714227585565474,
+   "relative_error": 5.425347222309067e-06
+  },
+  {
+   "reputation": 200,
+   "bond": 200.0,
+   "v": 0.05,
+   "sigma": 0.03,
+   "formula": 10.714285714285714,
+   "simulated": 10.714227585565474,
+   "relative_error": 5.425347222309067e-06
+  },
+  {
+   "reputation": 200,
+   "bond": 200.0,
+   "v": 0.05,
+   "sigma": 0.045,
+   "formula": 10.714285714285714,
+   "simulated": 10.714227585565474,
+   "relative_error": 5.425347222309067e-06
+  },
+  {
+   "reputation": 200,
+   "bond": 200.0,
+   "v": 0.3077,
+   "sigma": 0.0,
+   "formula": 65.93571428571427,
+   "simulated": 65.9365118117559,
+   "relative_error": 1.2095509243767921e-05
+  },
+  {
+   "reputation": 200,
+   "bond": 200.0,
+   "v": 0.3077,
+   "sigma": 0.03,
+   "formula": 65.93571428571427,
+   "simulated": 65.9365118117559,
+   "relative_error": 1.2095509243767921e-05
+  },
+  {
+   "reputation": 200,
+   "bond": 200.0,
+   "v": 0.3077,
+   "sigma": 0.045,
+   "formula": 65.93571428571427,
+   "simulated": 65.9365118117559,
+   "relative_error": 1.2095509243767921e-05
+  },
+  {
+   "reputation": 1000,
+   "bond": 200.0,
+   "v": 0.05,
+   "sigma": 0.0,
+   "formula": 15.476190476190476,
+   "simulated": 15.476132347470234,
+   "relative_error": 3.7560096156742983e-06
+  },
+  {
+   "reputation": 1000,
+   "bond": 200.0,
+   "v": 0.05,
+   "sigma": 0.03,
+   "formula": 15.476190476190476,
+   "simulated": 15.476132347470234,
+   "relative_error": 3.7560096156742983e-06
+  },
+  {
+   "reputation": 1000,
+   "bond": 200.0,
+   "v": 0.05,
+   "sigma": 0.045,
+   "formula": 24.99999999999998,
+   "simulated": 24.997616722470227,
+   "relative_error": 9.533110119008378e-05
+  },
+  {
+   "reputation": 1000,
+   "bond": 200.0,
+   "v": 0.3077,
+   "sigma": 0.0,
+   "formula": 95.24047619047619,
+   "simulated": 95.24036225818446,
+   "relative_error": 1.1962591566378352e-06
+  },
+  {
+   "reputation": 1000,
+   "bond": 200.0,
+   "v": 0.3077,
+   "sigma": 0.03,
+   "formula": 95.24047619047619,
+   "simulated": 95.24036225818446,
+   "relative_error": 1.1962591566378352e-06
+  },
+  {
+   "reputation": 1000,
+   "bond": 200.0,
+   "v": 0.3077,
+   "sigma": 0.045,
+   "formula": 153.84999999999997,
+   "simulated": 153.84724934895837,
+   "relative_error": 1.787878480074531e-05
+  },
+  {
+   "reputation": 1000,
+   "bond": 1000.0,
+   "v": 0.05,
+   "sigma": 0.0,
+   "formula": 48.80952380952381,
+   "simulated": 48.809465680803584,
+   "relative_error": 1.1909298778130883e-06
+  },
+  {
+   "reputation": 1000,
+   "bond": 1000.0,
+   "v": 0.05,
+   "sigma": 0.03,
+   "formula": 86.1111111111111,
+   "simulated": 86.1118280319941,
+   "relative_error": 8.32553283476412e-06
+  },
+  {
+   "reputation": 1000,
+   "bond": 1000.0,
+   "v": 0.05,
+   "sigma": 0.045,
+   "formula": 258.3333333333331,
+   "simulated": 258.3314150855656,
+   "relative_error": 7.425475229000217e-06
+  },
+  {
+   "reputation": 1000,
+   "bond": 1000.0,
+   "v": 0.3077,
+   "sigma": 0.0,
+   "formula": 300.3738095238095,
+   "simulated": 300.3742908296133,
+   "relative_error": 1.6023560928287792e-06
+  },
+  {
+   "reputation": 1000,
+   "bond": 1000.0,
+   "v": 0.3077,
+   "sigma": 0.03,
+   "formula": 529.9277777777777,
+   "simulated": 529.9303036644346,
+   "relative_error": 4.76647340045537e-06
+  },
+  {
+   "reputation": 1000,
+   "bond": 1000.0,
+   "v": 0.3077,
+   "sigma": 0.045,
+   "formula": 1589.783333333332,
+   "simulated": 1589.784749348958,
+   "relative_error": 8.906972393039271e-07
+  },
+  {
+   "reputation": 5000,
+   "bond": 1000.0,
+   "v": 0.05,
+   "sigma": 0.0,
+   "formula": 53.57142857142857,
+   "simulated": 53.57137044270834,
+   "relative_error": 1.0850694442297027e-06
+  },
+  {
+   "reputation": 5000,
+   "bond": 1000.0,
+   "v": 0.05,
+   "sigma": 0.03,
+   "formula": 97.22222222222221,
+   "simulated": 97.22301664806554,
+   "relative_error": 8.171237245619523e-06
+  },
+  {
+   "reputation": 5000,
+   "bond": 1000.0,
+   "v": 0.05,
+   "sigma": 0.045,
+   "formula": 291.6666666666664,
+   "simulated": 291.6685849144344,
+   "relative_error": 6.576849490297075e-06
+  },
+  {
+   "reputation": 5000,
+   "bond": 1000.0,
+   "v": 0.3077,
+   "sigma": 0.0,
+   "formula": 329.6785714285714,
+   "simulated": 329.6758161272321,
+   "relative_error": 8.35753845734727e-06
+  },
+  {
+   "reputation": 5000,
+   "bond": 1000.0,
+   "v": 0.3077,
+   "sigma": 0.03,
+   "formula": 598.3055555555553,
+   "simulated": 598.3003743489585,
+   "relative_error": 8.659800245410786e-06
+  },
+  {
+   "reputation": 5000,
+   "bond": 1000.0,
+   "v": 0.3077,
+   "sigma": 0.045,
+   "formula": 1794.9166666666647,
+   "simulated": 1794.903680710565,
+   "relative_error": 7.234851812869458e-06
+  },
+  {
+   "reputation": 5000,
+   "bond": 5000.0,
+   "v": 0.05,
+   "sigma": 0.0,
+   "formula": 239.28571428571428,
+   "simulated": 239.28565615699392,
+   "relative_error": 2.4292599551129693e-07
+  },
+  {
+   "reputation": 5000,
+   "bond": 5000.0,
+   "v": 0.05,
+   "sigma": 0.03,
+   "formula": 530.5555555555554,
+   "simulated": 530.5570475260415,
+   "relative_error": 2.8120909685387705e-06
+  },
+  {
+   "reputation": 5000,
+   "bond": 5000.0,
+   "v": 0.05,
+   "sigma": 0.045,
+   "formula": 1591.6666666666652,
+   "simulated": 1591.668584914435,
+   "relative_error": 1.2051818449859621e-06
+  },
+  {
+   "reputation": 5000,
+   "bond": 5000.0,
+   "v": 0.3077,
+   "sigma": 0.0,
+   "formula": 1472.5642857142855,
+   "simulated": 1472.5631859188989,
+   "relative_error": 7.468573000700096e-07
+  },
+  {
+   "reputation": 5000,
+   "bond": 5000.0,
+   "v": 0.3077,
+   "sigma": 0.03,
+   "formula": 3265.0388888888883,
+   "simulated": 3265.040166945686,
+   "relative_error": 3.914369295945121e-07
+  },
+  {
+   "reputation": 5000,
+   "bond": 5000.0,
+   "v": 0.3077,
+   "sigma": 0.045,
+   "formula": 9795.116666666658,
+   "simulated": 9795.119570777526,
+   "relative_error": 2.9648558226371703e-07
+  }
+ ],
+ "part_b": [
+  {
+   "reputation": 100,
+   "bond_fraction": 0.1,
+   "sigma_over_r": 0.0,
+   "safe_loan_per_point_in_v": 1.1904761904761905
+  },
+  {
+   "reputation": 100,
+   "bond_fraction": 0.1,
+   "sigma_over_r": 0.5,
+   "safe_loan_per_point_in_v": 1.1904761904761905
+  },
+  {
+   "reputation": 100,
+   "bond_fraction": 0.1,
+   "sigma_over_r": 0.9,
+   "safe_loan_per_point_in_v": 1.1904761904761905
+  },
+  {
+   "reputation": 100,
+   "bond_fraction": 0.1,
+   "sigma_over_r": 1.0,
+   "safe_loan_per_point_in_v": 1.1904761904761905
+  },
+  {
+   "reputation": 100,
+   "bond_fraction": 0.5,
+   "sigma_over_r": 0.0,
+   "safe_loan_per_point_in_v": 1.1904761904761905
+  },
+  {
+   "reputation": 100,
+   "bond_fraction": 0.5,
+   "sigma_over_r": 0.5,
+   "safe_loan_per_point_in_v": 1.1904761904761905
+  },
+  {
+   "reputation": 100,
+   "bond_fraction": 0.5,
+   "sigma_over_r": 0.9,
+   "safe_loan_per_point_in_v": 1.1904761904761905
+  },
+  {
+   "reputation": 100,
+   "bond_fraction": 0.5,
+   "sigma_over_r": 1.0,
+   "safe_loan_per_point_in_v": 1.1904761904761905
+  },
+  {
+   "reputation": 100,
+   "bond_fraction": 1.0,
+   "sigma_over_r": 0.0,
+   "safe_loan_per_point_in_v": 1.1904761904761905
+  },
+  {
+   "reputation": 100,
+   "bond_fraction": 1.0,
+   "sigma_over_r": 0.5,
+   "safe_loan_per_point_in_v": 1.1904761904761905
+  },
+  {
+   "reputation": 100,
+   "bond_fraction": 1.0,
+   "sigma_over_r": 0.9,
+   "safe_loan_per_point_in_v": 1.1904761904761905
+  },
+  {
+   "reputation": 100,
+   "bond_fraction": 1.0,
+   "sigma_over_r": 1.0,
+   "safe_loan_per_point_in_v": 1.1904761904761905
+  },
+  {
+   "reputation": 1000,
+   "bond_fraction": 0.1,
+   "sigma_over_r": 0.0,
+   "safe_loan_per_point_in_v": 0.21428571428571427
+  },
+  {
+   "reputation": 1000,
+   "bond_fraction": 0.1,
+   "sigma_over_r": 0.5,
+   "safe_loan_per_point_in_v": 0.21428571428571427
+  },
+  {
+   "reputation": 1000,
+   "bond_fraction": 0.1,
+   "sigma_over_r": 0.9,
+   "safe_loan_per_point_in_v": 0.21428571428571427
+  },
+  {
+   "reputation": 1000,
+   "bond_fraction": 0.1,
+   "sigma_over_r": 1.0,
+   "safe_loan_per_point_in_v": 0.21428571428571427
+  },
+  {
+   "reputation": 1000,
+   "bond_fraction": 0.5,
+   "sigma_over_r": 0.0,
+   "safe_loan_per_point_in_v": 0.5952380952380952
+  },
+  {
+   "reputation": 1000,
+   "bond_fraction": 0.5,
+   "sigma_over_r": 0.5,
+   "safe_loan_per_point_in_v": 0.6818181818181818
+  },
+  {
+   "reputation": 1000,
+   "bond_fraction": 0.5,
+   "sigma_over_r": 0.9,
+   "safe_loan_per_point_in_v": 2.4999999999999996
+  },
+  {
+   "reputation": 1000,
+   "bond_fraction": 0.5,
+   "sigma_over_r": 1.0,
+   "safe_loan_per_point_in_v": 7.499999999999994
+  },
+  {
+   "reputation": 1000,
+   "bond_fraction": 1.0,
+   "sigma_over_r": 0.0,
+   "safe_loan_per_point_in_v": 0.9761904761904762
+  },
+  {
+   "reputation": 1000,
+   "bond_fraction": 1.0,
+   "sigma_over_r": 0.5,
+   "safe_loan_per_point_in_v": 1.409090909090909
+  },
+  {
+   "reputation": 1000,
+   "bond_fraction": 1.0,
+   "sigma_over_r": 0.9,
+   "safe_loan_per_point_in_v": 5.166666666666666
+  },
+  {
+   "reputation": 1000,
+   "bond_fraction": 1.0,
+   "sigma_over_r": 1.0,
+   "safe_loan_per_point_in_v": 15.499999999999986
+  },
+  {
+   "reputation": 10000,
+   "bond_fraction": 0.1,
+   "sigma_over_r": 0.0,
+   "safe_loan_per_point_in_v": 0.10714285714285714
+  },
+  {
+   "reputation": 10000,
+   "bond_fraction": 0.1,
+   "sigma_over_r": 0.5,
+   "safe_loan_per_point_in_v": 0.1590909090909091
+  },
+  {
+   "reputation": 10000,
+   "bond_fraction": 0.1,
+   "sigma_over_r": 0.9,
+   "safe_loan_per_point_in_v": 0.5833333333333333
+  },
+  {
+   "reputation": 10000,
+   "bond_fraction": 0.1,
+   "sigma_over_r": 1.0,
+   "safe_loan_per_point_in_v": 1.7499999999999984
+  },
+  {
+   "reputation": 10000,
+   "bond_fraction": 0.5,
+   "sigma_over_r": 0.0,
+   "safe_loan_per_point_in_v": 0.4880952380952381
+  },
+  {
+   "reputation": 10000,
+   "bond_fraction": 0.5,
+   "sigma_over_r": 0.5,
+   "safe_loan_per_point_in_v": 0.8863636363636362
+  },
+  {
+   "reputation": 10000,
+   "bond_fraction": 0.5,
+   "sigma_over_r": 0.9,
+   "safe_loan_per_point_in_v": 3.2499999999999996
+  },
+  {
+   "reputation": 10000,
+   "bond_fraction": 0.5,
+   "sigma_over_r": 1.0,
+   "safe_loan_per_point_in_v": 9.749999999999991
+  },
+  {
+   "reputation": 10000,
+   "bond_fraction": 1.0,
+   "sigma_over_r": 0.0,
+   "safe_loan_per_point_in_v": 0.9547619047619048
+  },
+  {
+   "reputation": 10000,
+   "bond_fraction": 1.0,
+   "sigma_over_r": 0.5,
+   "safe_loan_per_point_in_v": 1.7772727272727271
+  },
+  {
+   "reputation": 10000,
+   "bond_fraction": 1.0,
+   "sigma_over_r": 0.9,
+   "safe_loan_per_point_in_v": 6.516666666666666
+  },
+  {
+   "reputation": 10000,
+   "bond_fraction": 1.0,
+   "sigma_over_r": 1.0,
+   "safe_loan_per_point_in_v": 19.549999999999983
+  }
+ ],
+ "part_c": {
+  "v_demo": 0.3076923076923077,
+  "demo_safe_loan": 36.630036630036635,
+  "demo_loan": 1000,
+  "oversize_factor": 27.299999999999997,
+  "demo_gain_from_default": 1011.5384615384615,
+  "system_credit_over_treasury": 0.08
+ },
+ "control": {
+  "0.01": 0.010498046875,
+  "1": 1.050048828125,
+  "100": 105.0
+ }
+}

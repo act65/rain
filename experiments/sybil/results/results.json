@@ -1,0 +1,157 @@
+{
+ "provenance": {
+  "utc": "2026-11-19T12:36:09+00:00",
+  "commit": "1805efb4da4a5bc732af019382b5f685b96ce8d0",
+  "commit_short": "1805efb",
+  "dirty": true,
+  "dirty_paths": "not recorded (stamp passed through the environment)",
+  "branch": null,
+  "python": "3.12.3",
+  "host": "devbox.europe-west4-a.c.dev-compute-d7766860.internal"
+ },
+ "v": 0.3076923076923077,
+ "scenarios": {
+  "naive (20 per point)": {
+   "S1_free_mint": {
+    "profit": 1988.4615384615026,
+    "formula": 1988.4615384615386,
+    "hold_instead": 30.76923076923077
+   },
+   "S2_bought": {
+    "profit": 1942.3076923075132,
+    "formula": 1942.3076923076926
+   },
+   "S3_vouched": {
+    "profit": 1957.692307692272,
+    "formula": 1957.6923076923078,
+    "sponsor_reputation_lost": 100.0
+   }
+  },
+  "careful (0.9 v per point)": {
+   "S1_free_mint": {
+    "profit": 16.153846153756604,
+    "formula": 16.153846153846153,
+    "hold_instead": 30.76923076923077
+   },
+   "S2_bought": {
+    "profit": -30.00000000023283,
+    "formula": -30.0
+   },
+   "S3_vouched": {
+    "profit": -14.615384615474166,
+    "formula": -14.615384615384615,
+    "sponsor_reputation_lost": 100.0
+   }
+  }
+ },
+ "scaling": {
+  "naive": {
+   "1": {
+    "fee": 0.0002972095024022947,
+    "v_before": 7.92558673072786e-06,
+    "dilution_at_peak": 0.0007267441860465116,
+    "profit": 1999.9985139524879,
+    "lender_loss": 2000.0,
+    "fees_paid": 0.0014860475120114737,
+    "sybil_reputation_after": 0.0,
+    "lending_ratio": 20.0,
+    "honest_dividend_per_point_next_cycle": 3.908659311367851e-07,
+    "profit_per_identity": 1999.9985139524879,
+    "honest_dividend_change": 0.00011061402780399021
+   },
+   "10": {
+    "fee": 0.0002972095024022947,
+    "v_before": 7.92558673072786e-06,
+    "dilution_at_peak": 0.007220216606498195,
+    "profit": 19999.98513952488,
+    "lender_loss": 20000.0,
+    "fees_paid": 0.014860475120114737,
+    "sybil_reputation_after": 0.0,
+    "lending_ratio": 20.0,
+    "honest_dividend_per_point_next_cycle": 3.912550053944744e-07,
+    "profit_per_identity": 1999.998513952488,
+    "honest_dividend_change": 0.0011061402780156993
+   },
+   "100": {
+    "fee": 0.0002972095024022947,
+    "v_before": 7.92558673072786e-06,
+    "dilution_at_peak": 0.06779661016949153,
+    "profit": 199999.85139524878,
+    "lender_loss": 200000.0,
+    "fees_paid": 0.1486047512011483,
+    "sybil_reputation_after": 0.0,
+    "lending_ratio": 20.0,
+    "honest_dividend_per_point_next_cycle": 3.9514574797137735e-07,
+    "profit_per_identity": 1999.9985139524879,
+    "honest_dividend_change": 0.01106140278015677
+   },
+   "1000": {
+    "fee": 0.0002972095024022947,
+    "v_before": 7.92558673072786e-06,
+    "dilution_at_peak": 0.42105263157894735,
+    "profit": 1999998.513952488,
+    "lender_loss": 2000000.0,
+    "fees_paid": 1.4860475120114858,
+    "sybil_reputation_after": 0.0,
+    "lending_ratio": 20.0,
+    "honest_dividend_per_point_next_cycle": 4.340531737404163e-07,
+    "profit_per_identity": 1999.998513952488,
+    "honest_dividend_change": 0.11061402780159257
+   }
+  },
+  "careful": {
+   "1": {
+    "fee": 0.0002972095024022947,
+    "v_before": 7.92558673072786e-06,
+    "dilution_at_peak": 0.0007267441860465116,
+    "profit": -0.0007830156948026321,
+    "lender_loss": 0.0007030318172088416,
+    "fees_paid": 0.0014860475120114737,
+    "sybil_reputation_after": 0.0,
+    "lending_ratio": 7.030318172088416e-06,
+    "honest_dividend_per_point_next_cycle": 3.908659311367851e-07,
+    "profit_per_identity": -0.0007830156948026321,
+    "honest_dividend_change": 0.00011061402780399021
+   },
+   "10": {
+    "fee": 0.0002972095024022947,
+    "v_before": 7.92558673072786e-06,
+    "dilution_at_peak": 0.007220216606498195,
+    "profit": -0.007870279109215148,
+    "lender_loss": 0.006990196010899589,
+    "fees_paid": 0.014860475120114737,
+    "sybil_reputation_after": 0.0,
+    "lending_ratio": 6.990196010899589e-06,
+    "honest_dividend_per_point_next_cycle": 3.912550053944744e-07,
+    "profit_per_identity": -0.0007870279109215148,
+    "honest_dividend_change": 0.0011061402780156993
+   },
+   "100": {
+    "fee": 0.0002972095024022947,
+    "v_before": 7.92558673072786e-06,
+    "dilution_at_peak": 0.06779661016949153,
+    "profit": -0.08244571270542896,
+    "lender_loss": 0.06615903849571934,
+    "fees_paid": 0.1486047512011483,
+    "sybil_reputation_after": 0.0,
+    "lending_ratio": 6.615903849571935e-06,
+    "honest_dividend_per_point_next_cycle": 3.9514574797137735e-07,
+    "profit_per_identity": -0.0008244571270542895,
+    "honest_dividend_change": 0.01106140278015677
+   },
+   "1000": {
+    "fee": 0.0002972095024022947,
+    "v_before": 7.92558673072786e-06,
+    "dilution_at_peak": 0.42105263157894735,
+    "profit": -1.042728555870629,
+    "lender_loss": 0.44331895614085687,
+    "fees_paid": 1.4860475120114858,
+    "sybil_reputation_after": 0.0,
+    "lending_ratio": 4.433189561408569e-06,
+    "honest_dividend_per_point_next_cycle": 4.340531737404163e-07,
+    "profit_per_identity": -0.001042728555870629,
+    "honest_dividend_change": 0.11061402780159257
+   }
+  }
+ }
+}

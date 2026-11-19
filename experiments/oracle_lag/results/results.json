@@ -1,0 +1,69 @@
+{
+ "provenance": {
+  "utc": "2026-11-19T12:37:00+00:00",
+  "commit": "1805efb4da4a5bc732af019382b5f685b96ce8d0",
+  "commit_short": "1805efb",
+  "dirty": true,
+  "dirty_paths": "not recorded (stamp passed through the environment)",
+  "branch": null,
+  "python": "3.12.3",
+  "host": "devbox.europe-west4-a.c.dev-compute-d7766860.internal"
+ },
+ "results": {
+  "0": {
+   "honest_dividends": 415.6582648818099,
+   "defaulter_dividends": 205.57156830995305,
+   "newcomer_present_value": 8.184170500481496,
+   "honest_reputation": 808.3333328889014,
+   "defaulter_reputation": 385.5690816006851,
+   "honest_relative": 1.0,
+   "defaulter_relative": 1.0,
+   "newcomer_relative": 1.0,
+   "newcomer_predicted": 1.0
+  },
+  "1": {
+   "honest_dividends": 415.5997710866966,
+   "defaulter_dividends": 206.26628194761707,
+   "newcomer_present_value": 7.79412022628713,
+   "honest_reputation": 808.3333328751561,
+   "defaulter_reputation": 393.80405695747146,
+   "honest_relative": 0.9998592743124453,
+   "defaulter_relative": 1.0033794247102137,
+   "newcomer_relative": 0.9523408909710008,
+   "newcomer_predicted": 0.9523809523809523
+  },
+  "3": {
+   "honest_dividends": 415.47676780309064,
+   "defaulter_dividends": 207.7162509066562,
+   "newcomer_present_value": 7.068726651569431,
+   "honest_reputation": 808.3333328463771,
+   "defaulter_reputation": 398.159356620421,
+   "honest_relative": 0.999563350246937,
+   "defaulter_relative": 1.0104327782987454,
+   "newcomer_relative": 0.8637071589788555,
+   "newcomer_predicted": 0.863837598531476
+  },
+  "6": {
+   "honest_dividends": 415.27561348647015,
+   "defaulter_dividends": 210.05892086498844,
+   "newcomer_present_value": 6.104869544923073,
+   "honest_reputation": 808.333332799784,
+   "defaulter_reputation": 399.05574833983883,
+   "honest_relative": 0.9990794086689253,
+   "defaulter_relative": 1.0218286633308626,
+   "newcomer_relative": 0.745936261294154,
+   "newcomer_predicted": 0.7462153966366275
+  },
+  "12": {
+   "honest_dividends": 414.80550496792915,
+   "defaulter_dividends": 215.42735737955735,
+   "newcomer_present_value": 4.552413821105928,
+   "honest_reputation": 808.3333326927965,
+   "defaulter_reputation": 415.24676875750527,
+   "honest_relative": 0.9979484110243225,
+   "defaulter_relative": 1.047943347178945,
+   "newcomer_relative": 0.5562462097824205,
+   "newcomer_predicted": 0.5568374181775593
+  }
+ }
+}

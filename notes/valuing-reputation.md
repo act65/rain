@@ -10,13 +10,12 @@ For a reputation system to provide economic security, its core asset—reputatio
 
 The foundation of reputation's value is a direct, passive cash flow. This gives every reputation point a quantifiable "floor price," making it a tangible asset on a user's balance sheet.
 
-*   **The Mechanism:** The economic engine of the protocol is a virtuous cycle:
-    1.  **Fee Generation:** All economic sessions begin with a call to `CalculusEngine.monitoredAction()`, which charges a `protocolFee`.
-    2.  **Capital Aggregation:** These fees are collected in the `TreasuryV2.sol` contract.
-    3.  **Yield Generation:** The `TreasuryV2`, governed by `MANAGER_ROLE` holders, invests this capital into a whitelist of secure, external DeFi protocols (e.g., Aave, Compound) to generate yield.
-    4.  **Dividend Distribution:** The generated yield is periodically distributed to users as a Reputation Dividend.
+*   **The Mechanism:**
+    1.  **Fee Generation:** Every promise recorded by `CalculusEngine.monitoredPromise()` pays a fee proportional to the amount promised.
+    2.  **Dividend Distribution:** The fees collect in a payout fund in `Treasury.sol`, which shares out a fixed fraction of itself to reputation holders each cycle (the same fraction by which reputation decays). In steady state that is exactly what comes in. They are not invested.
+    3.  **A known value:** A point costs `pointPrice` in fees and decays at `delta` per period. Once supply has settled, it earns `pointPrice * delta` per period and is worth `pointPrice * delta / (r + delta)`.
 
-*   **The Distribution:** The dividend is distributed proportionally to each user's share of the total reputation in the system. A user holding 1% of the total reputation points is entitled to 1% of the dividend pool. This is handled via a gas-efficient Merkle drop managed by the `TreasuryV2` contract.
+*   **The Distribution:** The dividend is distributed proportionally to each user's share of the total reputation in the system. A user holding 1% of the total reputation points is entitled to 1% of the dividend pool. This is handled via a gas-efficient Merkle drop managed by the `Treasury` contract.
 
 The primary purpose of the dividend is not just to provide income, but to make the **threat of loss economically painful.** If a user's reputation is slashed, they permanently lose their claim on this future cash flow, representing a direct and measurable financial penalty.
 
@@ -44,7 +43,7 @@ The direct (dividend) and indirect (utility) value streams are not independent; 
 
 1.  **Utility** (e.g., demand for undercollateralized loans) drives economic activity.
 2.  This **Activity** requires users to pay the `protocolFee` via the `CalculusEngine`.
-3.  These **Fees** fund the `TreasuryV2`.
+3.  These **Fees** fund the `Treasury`.
 4.  The **Treasury** generates yield, which funds the **Dividend**.
 5.  The **Dividend** gives reputation a tangible, baseline financial value.
 6.  This tangible value makes the threat of being slashed and losing access to **Utility** a credible and powerful deterrent, reinforcing trustworthy behavior.
@@ -55,11 +54,9 @@ The direct (dividend) and indirect (utility) value streams are not independent; 
 
 An attacker who cannot farm reputation might instead try to devalue it.
 
-*   **Attack Vector: Draining the Treasury**
-    *   **The Attack:** A malicious actor gains the `MANAGER_ROLE` for the `TreasuryV2` and attempts to "invest" all the capital into a fraudulent contract they control, effectively stealing the source of the dividend.
-    *   **The Defense:**
-        1.  **Role Separation:** The `MANAGER_ROLE` can only invest in a pre-approved list of yield sources. The power to whitelist new sources belongs to the `DEFAULT_ADMIN_ROLE`, which should be controlled by a more secure entity like a DAO with a multi-signature wallet.
-        2.  **Governance Time-Locks:** Any governance proposal to add a new yield source to the whitelist must be subject to a mandatory time-lock (e.g., 7-30 days). This provides ample time for the community to audit the proposed contract and organize a veto against any malicious additions, neutralizing the attack.
+*   **Attack Vector: A dishonest dividend manager**
+    *   **The Attack:** The account holding the Treasury's `MANAGER_ROLE` publishes a Merkle root that pays the dividend to itself.
+    *   **The Defense:** A cycle can share out only a fixed fraction of the payout fund, cycles cannot be started faster than a set interval, and a cycle can never pay out more than it reserved. So the exposure per cycle is about one cycle's fees. The root itself is computed off-chain and is trusted; publishing the reputation snapshot it was computed from, and a challenge period before claims open, would remove that trust (not implemented).
 
 *   **Attack Vector: Exploiting a "Superpower" Application**
     *   **The Attack:** An attacker builds a high reputation honestly, then uses it to access a third-party application (e.g., an investment DAO) and act maliciously within that application's context.

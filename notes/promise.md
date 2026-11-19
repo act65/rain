@@ -41,7 +41,7 @@ To incentivize a `Promisor (S)` to fulfill a promise, we can apply four fundamen
 *   **Properties:**
     *   **Pros:** Highly capital-efficient. It does not require the promisor to lock up liquid assets.
     *   **Cons:** Suffers from the "cold start" or "nothing to lose" problem. A new user with zero reputation has no future value to protect, making this mechanism weak in isolation.
-*   **Implementation in Rain eDSL:** The off-chain oracle observing a `monitoredFulfillment` event and calling `reputationUpdater.applyReputationChanges()` to increase the promisor's score. The value of this score is realized through the `TreasuryV2` dividend.
+*   **Implementation in Rain eDSL:** The off-chain oracle observing a `monitoredFulfillment` event and calling `reputationUpdater.applyReputationChanges()` to increase the promisor's score. The value of this score is realized through the `Treasury` dividend.
 
 **Class 3: Shared-Fate (The Co-Signer)**
 *   **Core Idea:** The fulfillment of the promise is tied to the economic outcome of a third party.

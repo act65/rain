@@ -10,190 +10,88 @@ This implementation focuses on the **smart contract architecture, off-chain supp
 
 ## Core Mechanics
 
-The Rain Protocol revolves around several key components:
+A *promise* is a recorded commitment by one user to another (an amount, an asset, a deadline). Anyone can write a *script*, a contract that records promises and moves value on behalf of users who authorized it. Reputation is what a user earns by keeping promises.
 
-1.  **`CurrencyToken.sol` (DMD):** A standard ERC-20 token that serves as the system's primary unit of account and transactional currency.
-2.  **`RainReputation.sol`:** A specialized token contract (e.g., ERC721 or custom) representing a user's reputation. This reputation is dynamic and influenced by user behavior within the protocol.
-3.  **`ReputationClaimToken.sol`:** A token that may be used to claim rewards or benefits based on a user's reputation score.
-4.  **`ReputationUpdater.sol`:** A smart contract responsible for updating user reputation scores on-chain. It is designed to be called by a trusted oracle.
-5.  **`CalculusEngine.sol`:** A contract that handles complex calculations required by the protocol, potentially related to risk assessment, reward distribution, or other financial mechanics.
-6.  **`Treasury.sol`:** Manages protocol funds, collects fees generated from activities (e.g., loan origination, repayments), and facilitates dividend distribution to reputation holders.
-7.  **Loan System (via `LoanScript.sol` and off-chain logic):** Users can request and receive loans, with terms and conditions potentially influenced by their reputation. Repayment and defaults directly impact reputation scores. `LoanScript.sol` likely provides on-chain functions for loan lifecycle management.
-8.  **Off-Chain Reputation Oracle:** User reputation is calculated off-chain based on various factors and submitted to the `ReputationUpdater` contract by a designated oracle script (`scripts/run_reputation_oracle.py`). This allows for more complex and nuanced reputation scoring than feasible purely on-chain.
-9.  **Dividend Distribution:** The protocol features a mechanism to distribute dividends to `RainReputation` token holders, managed by the `Treasury` and triggered by `scripts/run_dividend_distribution.py`.
-10. **Protocol Fees:** The system incorporates configurable protocol fees, managed via `scripts/run_set_protocol_fee.py`.
-11. **`rain-offchain` Python Library:** A local Python library (`rain/`) containing modules for off-chain tasks such as reputation calculation, dividend processing, Merkle tree generation (`rain/merkletree.py`), and interacting with the smart contracts.
+1.  **`CalculusEngine.sol`**: the log of promises and transfers. Scripts are permissionless; a script can only act for users who authorized it, within the allowances they gave it. Every promise pays a fee to the Treasury: a percentage of the amount promised, with a minimum.
+2.  **`RainReputation.sol`**: the identity token (non-transferable) and the reputation ledger. A new identity has no reputation. Reputation decays by a fixed fraction each period. It can be bonded: a script holds the bond and either returns it or, on default, destroys it.
+3.  **Off-chain oracle and `ReputationUpdater.sol`**: the oracle reads the promise log and credits each kept promise with `fee paid / point price` reputation, so reputation has a fixed price and is a record of fees paid on kept promises. A broken promise costs a penalty. Each update is applied at most once.
+4.  **`ReputationClaimToken.sol` (RCT)**: a transferable claim on a defaulted promise, minted to the person it was owed to. While someone has claims outstanding against them they are *delinquent*: they cannot borrow or earn reputation.
+5.  **`Treasury.sol`**: pays the fees out to reputation holders as a dividend (a Merkle drop). Every fee goes into a payout fund, and each cycle shares out a fixed fraction of it, equal to the reputation decay rate. In steady state that is what comes in; when fee income changes, dividends follow gradually, at the speed the supply of reputation does.
+6.  **`LoanScript.sol`**: a reference script, a fixed-term loan secured by a reputation bond.
+7.  **`CurrencyToken.sol` (DMD)**: a mintable ERC-20 standing in for a stablecoin.
+
+Why the rules are what they are (a fixed price per point, decay, fees paid out, no starting reputation) is recorded in `experiments/`, and the reasoning about what reputation should mean in `notes/bayesian-reputation.md`.
 
 ## Technology Stack
 
-*   **Smart Contracts:** Solidity `^0.8.19`
-*   **Development Framework:** Python-based Brownie (`v1.19.0+`)
-*   **Local Blockchain:** Ganache (`ganache-cli`)
-*   **Dependencies:**
-    *   OpenZeppelin Contracts `@4.8.0`
-    *   `pymerkle` (for Merkle tree generation in the off-chain library)
-*   **Off-Chain Logic:** Python 3.9+
-*   **Node.js:** `18.x` (for `ganache-cli`)
+*   **Smart Contracts:** Solidity `0.8.19`, OpenZeppelin Contracts `4.8.0`
+*   **Development Framework:** [Ape](https://docs.apeworx.io/) (`eth-ape` with the `ape-solidity` plugin). Tests and scripts run against Ape's in-process local chain, so no separate node is needed.
+*   **Off-Chain Logic:** Python 3.10+ (the `rain` library depends only on `eth-utils`)
+*   **Environment:** [uv](https://docs.astral.sh/uv/) (`pyproject.toml` + `uv.lock`)
 
 ## What's Implemented
 
 ### Smart Contracts (`contracts/`)
 
-The contracts are organized into logical groups:
 *   `contracts/token/`: `CurrencyToken.sol`, `RainReputation.sol`, `ReputationClaimToken.sol`
 *   `contracts/primitives/`: `CalculusEngine.sol`, `ReputationUpdater.sol`, `Treasury.sol`
-*   `contracts/scripts/`: `LoanScript.sol` (utility/interaction script contract)
-*   `contracts/mocks/`: Mock contracts for testing.
-
-Key contracts include:
-1.  **`CurrencyToken.sol`**: ERC-20 token (DMD) for transactions.
-2.  **`RainReputation.sol`**: Represents user reputation.
-3.  **`ReputationClaimToken.sol`**: For claiming reputation-based benefits.
-4.  **`CalculusEngine.sol`**: Handles core protocol calculations.
-5.  **`ReputationUpdater.sol`**: Updates on-chain reputation scores via an oracle.
-6.  **`Treasury.sol`**: Manages protocol funds, fees, and dividend distributions.
-7.  **`LoanScript.sol`**: Facilitates on-chain loan operations.
+*   `contracts/scripts/`: `LoanScript.sol`
 
 ### Off-Chain Python Library (`rain/`)
 
-Located in the `rain` directory and installed as a local package, this library includes:
-*   `reputation.py`: Logic for calculating reputation scores.
-*   `dividends.py`: Logic for processing dividend distributions.
-*   `merkletree.py`: Utilities for creating and verifying Merkle trees.
-*   `protocol_fee.py`: Logic for managing protocol fees.
-*   `utils.py`: Shared utility functions.
+Installed as a local package. The core logic is pure Python and needs no chain.
+
+*   `reputation.py`: the oracle's rules (promise log to reputation changes).
+*   `dividends.py`, `merkletree.py`: dividend shares and the Merkle drop.
+*   `model.py`: a pure-Python model of the protocol's accounting, for simulations (checked against the contracts in `tests/test_model_vs_contracts.py`).
+*   `economics.py`: closed forms (what a point is worth, when default pays, the steady state).
+*   `belief.py`: reputation as the probability of keeping the next promise; decaying counts against the exact Bayesian filter.
+*   `ladder.py`: progressive lending, i.e. how much to lend next given what has been repaid.
+*   `provenance.py`, `utils.py`: result stamps and small helpers.
+
+### Experiments (`experiments/`)
+
+Experiments on the protocol's economics, each with predictions written before it was run and the outcome recorded after. Start with `experiments/README.md`.
 
 ### Simulation & Management Scripts (`scripts/`)
 
-These Python scripts, run with Brownie, manage the protocol and simulate user interactions:
+These Python scripts, run with `ape run <name>`, manage the protocol and simulate user interactions:
 1.  **`deploy.py`**: Deploys all smart contracts, links them, mints initial tokens, and saves contract addresses to `deployment_addresses.json`.
 2.  **`simulate_loan.py`**: Simulates loan origination, repayment, and default scenarios, showcasing the impact on reputation.
 3.  **`run_reputation_oracle.py`**: Simulates the off-chain oracle calculating and submitting reputation updates to `ReputationUpdater.sol`. (This script may use `oracle_state.json` to manage its state).
-4.  **`run_dividend_distribution.py`**: Simulates the process of distributing dividends from the `Treasury` to reputation holders.
-5.  **`run_set_protocol_fee.py`**: Demonstrates how protocol fees can be configured.
-6.  **`run_simulation.py`**: A general script that may run a comprehensive simulation of various protocol features.
+4.  **`run_dividend_distribution.py`**: Runs a dividend cycle: the fees collected are split pro rata to reputation and claimed through Merkle proofs.
+5.  **`run_simulation.py`**: Runs the whole sequence in one session: deploy, loans on a ladder (repaid, reputation earned, a default, its resolution), reputation oracle, dividend distribution. This is the quickest way to see everything work: `uv run ape run run_simulation`.
+
+### Tests (`tests/`)
+
+Run with `uv run ape test`.
+
+*   `tests/unit/`: pure-Python tests of the `rain` library (Merkle tree, dividend shares, fee formula, oracle rules). No contracts involved.
+*   `tests/test_*.py`: contract tests, plus `test_loan_script.py` (the full loan lifecycle) and `test_offchain_integration.py` (the `rain` library against the real contracts).
+*   `notes/primitives.md` describes the permission model the tests exercise (scripts are permissionless; users grant each script its powers).
 
 ## Getting Started
 
-### Prerequisites
+You need [uv](https://docs.astral.sh/uv/). Everything else is installed into a project-local environment.
 
-*   Python 3.9+
-*   Node.js 18.x and npm (for `ganache-cli`)
-*   `ganache-cli` installed globally: `npm install -g ganache-cli`
-*   `eth-brownie` installed: `pip install eth-brownie>=1.19.0,<2.0.0`
-*   Docker (Recommended for the most consistent setup)
-
-### Installation & Running (Non-Docker - for understanding, Docker recommended)
-
-1.  **Clone the Repository:**
-    ```bash
-    git clone <your-repo-url> # Replace <your-repo-url> with the actual URL
-    cd <your-repo-name> # Replace <your-repo-name> with the directory name
-    ```
-
-2.  **Install Python Dependencies:**
-    This includes Brownie and dependencies for the `rain-offchain` library.
-    ```bash
-    pip install -r requirements.txt
-    ```
-
-3.  **Install `rain-offchain` Library:**
-    Install the local Python package.
-    ```bash
-    pip install .
-    ```
-    (For development, you might prefer `pip install -e .`)
-
-4.  **Start the Local Blockchain (Terminal 1):**
-    Open a terminal and run Ganache with the project's deterministic mnemonic. **Leave this terminal running.**
-    ```bash
-    ganache-cli \
-        --mnemonic "candy maple cake sugar pudding cream honey rich smooth crumble sweet treat" \
-        --port 8545 \
-        --accounts 10 \
-        --defaultBalanceEther 1000 \
-        --gasLimit 12000000 \
-        --deterministic \
-        --host 127.0.0.1
-    ```
-
-5.  **Run the Scripts (Terminal 2):**
-    Open a second terminal in the project directory. Run scripts using Brownie:
-
-    *   **Deploy contracts:**
-        ```bash
-        brownie run scripts/deploy.py --network development
-        ```
-        This creates/updates `deployment_addresses.json`.
-
-    *   **Run simulations/operations (examples):**
-        ```bash
-        brownie run scripts/simulate_loan.py --network development
-        brownie run scripts/run_reputation_oracle.py --network development
-        # ... and other scripts as needed
-        ```
-
-## Running with Docker (Recommended for Consistency)
-
-This project includes a comprehensive Docker setup for a consistent development and testing environment. The `docker_helper.sh` script simplifies Docker usage.
-
-### Prerequisites for Docker
-
-*   Docker installed and running on your system.
-
-### Building the Docker Image
-
-The Docker image includes all necessary system dependencies, Python packages, global `ganache-cli`, pre-compiles the smart contracts, and installs the local `rain-offchain` library.
-Build the image once (or when Dockerfile/dependencies change):
 ```bash
-./docker_helper.sh build
+uv sync                          # install Ape, the Solidity plugin and the `rain` library
+uv run ape compile               # compile the contracts (downloads solc and OpenZeppelin the first time; add --force if a contract edit seems not to take effect)
+uv run ape test                  # run all tests
+uv run ape test tests/unit       # only the pure-Python tests of the `rain` library
+uv run ape run run_simulation    # deploy, loans, oracle, dividends and fee keeper, end to end
 ```
 
-### Running All Tests with Docker (Easiest Method)
+The individual scripts (`ape run deploy`, `ape run simulate_loan`, ...) each start a fresh in-process chain, so on the default local network only `run_simulation` (which chains them in one session) is useful. To run them one at a time, point Ape at a persistent node with `--network`.
 
-The `all` command handles starting Ganache, running Brownie tests, and stopping Ganache:
+### With Docker
+
 ```bash
-./docker_helper.sh all
+./docker_helper.sh build      # build the image (compiles the contracts)
+./docker_helper.sh test       # run the tests
+./docker_helper.sh simulate   # run the full simulation
+./docker_helper.sh shell      # open a shell in the container
 ```
-This will:
-1. Build the image if it's not already built.
-2. Start a Ganache container in the background using the project's standard mnemonic.
-3. Execute `brownie test -s` inside the container.
-4. Stop and remove the Ganache container.
-
-### Managing Ganache and Tests Separately with Docker
-
-1.  **Start Ganache Container:**
-    ```bash
-    ./docker_helper.sh start_ganache
-    ```
-    This starts Ganache in a detached container, exposing port 8545. It uses the mnemonic: `"candy maple cake sugar pudding cream honey rich smooth crumble sweet treat"`. The container is named `solidity_app_dev`.
-
-2.  **Run Brownie Tests (or other scripts):**
-    Once Ganache is running, execute tests or any Brownie script by `exec`-ing into the container:
-    ```bash
-    ./docker_helper.sh test
-    ```
-    To run a specific script (e.g., deploy):
-    ```bash
-    docker exec solidity_app_dev brownie run scripts/deploy.py --network development
-    ```
-
-3.  **Stop Ganache Container:**
-    When done, stop the Ganache container:
-    ```bash
-    ./docker_helper.sh stop_ganache
-    ```
-
-### Interactive Shell in Docker Container
-
-To get an interactive bash shell inside the running application container:
-1. Ensure the Ganache container is running: `./docker_helper.sh start_ganache`
-2. Open a shell:
-   ```bash
-   ./docker_helper.sh shell
-   ```
-   You'll be inside the container as `appuser` in `/home/appuser/app`. All project tools and scripts are available.
 
 ## Future Development Roadmap
 
@@ -208,5 +106,6 @@ This implementation provides a robust foundation. Future development could focus
 
 ## Notes
 
-*   The `deployment_addresses.json` file stores the addresses of deployed contracts.
-*   The `oracle_state.json` file is likely used by `scripts/run_reputation_oracle.py` to persist or load oracle-related data.
+*   `deployment_addresses.json` (written by `scripts/deploy.py`) stores the addresses of deployed contracts.
+*   `oracle_state.json` (written by `scripts/run_reputation_oracle.py`) stores the last block the oracle processed, for a given CalculusEngine deployment.
+*   Both are generated files and are not tracked by git.
