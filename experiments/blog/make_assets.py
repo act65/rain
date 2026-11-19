@@ -435,6 +435,25 @@ def numbers(keeper, peaks):
     n["credit_per_point"] = fmt(gr["per_point"]["credit_per_point"], 3)
     n["sunk_fee_share"] = pct(gr["parameters"]["sunk_fee_share"], 1)
 
+    # the three follow-ups: a borrower who chooses, the lender's side of graduating, a patient ring
+    sb, ge, pr = results("strategic_borrower"), results("guarantor_exit"), results("patient_ring")
+    n["return_threshold"] = pct(sb["return_threshold"]["formula"], 1)
+    n["discount_plus_shock"] = pct(sb["return_threshold"]["discount_plus_shock"])
+    n["capacity_ratio_15"] = fmt([r for r in sb["capacity"] if r["sigma"] == 0.15][0]["threshold_over_capacity"])
+    gross = {r["interest"]: r["gross"] for r in sb["by_interest"]}
+    n["gross_needed_5"], n["gross_needed_10"] = pct(gross[0.05], 1), pct(gross[0.10], 1)
+    arr = ge["arrangements"]
+    base = arr["a. guaranteed for ever"]["lender_value"]
+    n["lender_loss_from_graduating"] = pct(1 - arr["b. graduating, unsecured at 5%"]["lender_value"] / base, 1)
+    n["unsecured_rate_lender"] = pct(ge["premium_rate"], 2)
+    n["unsecured_rate_borrower"] = pct(ge["borrower_indifferent_rate"], 2)
+    n["graduation_cycles_premium"] = str(ge["graduation_by_unsecured_rate"][f"{100 * ge['premium_rate']:.2f}%"])
+    at_five = pr["results"]["0.05"]["by_ring_rate"]
+    n["patient_gain_4"] = pct(at_five["0.04"]["gain_over_fees_paid"], 1)
+    n["patient_gain_0"] = pct(at_five["0.0"]["gain_over_fees_paid"])
+    n["graduation_cycles_2pct"] = str(pr["results"]["0.02"]["graduation_cycles"])
+    n["graduation_cycles_zero"] = str(pr["results"]["0.0"]["graduation_cycles"])
+
     # the ladder's bounds (i = r = 5%, surplus 3%; risk 10%, shocks 2%, tail index 1)
     n["k_screen"] = fmt(ladder.screening_growth_factor(0.10, 1.0, 0.02), 3)
     n["k_stay"] = fmt(ladder.incentive_growth_factor(0.05, 0.03, 0.05), 3)
@@ -457,8 +476,8 @@ def main():
              f"# Source commit {stamp['commit_short']} (dirty: {stamp['dirty']}), {stamp['utc']}.",
              f"commit: \"{stamp['commit_short']}\""]
     lines += [f"{key}: \"{value}\"" for key, value in numbers(keeper, peaks).items()]
-    # Tallied by hand on 2026-11-19 from the outcome tables in the fifteen experiment READMEs.
-    lines += ['predictions_total: "98"', 'predictions_held: "71"', 'predictions_partly: "18"', 'predictions_wrong: "9"']
+    # Tallied by hand on 2026-11-19 from the outcome tables in the eighteen experiment READMEs.
+    lines += ['predictions_total: "110"', 'predictions_held: "80"', 'predictions_partly: "21"', 'predictions_wrong: "9"']
     (out / "rain.yml").write_text("\n".join(lines) + "\n")
     print("\n".join(lines))
 

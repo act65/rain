@@ -233,6 +233,11 @@ def graduated_credit(
 
     A newcomer with a guarantor builds `evidence` at once and `cost` with every loan, and so
     outgrows the guarantor. See experiments/graduation.
+
+    `sunk_fee_share` should be r / (r + decay) for the lowest discount rate r an attacker is
+    allowed for: a more patient ring gets more of its fees back and can profit. Zero is safe
+    against anyone and still lets the borrower climb to the evidence, more slowly
+    (experiments/patient_ring).
     """
     subject, reader = str(subject), str(reader)
     kept = [e for e in entries if str(e.promisor) == subject and e.kept and (asset is None or str(e.asset) == str(asset))]

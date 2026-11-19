@@ -1,0 +1,113 @@
+{
+ "provenance": {
+  "utc": "2026-11-19T16:30:12+00:00",
+  "commit": "723a2bd",
+  "commit_short": "723a2bd",
+  "dirty": false,
+  "dirty_paths": "not recorded (stamp passed through the environment)",
+  "branch": null,
+  "python": "3.12.3",
+  "host": "devbox.europe-west4-a.c.dev-compute-d7766860.internal"
+ },
+ "parameters": {
+  "shock": 0.02,
+  "r": 0.05,
+  "fee_rate": 0.01,
+  "fee_returned": 0.375
+ },
+ "return_threshold": {
+  "formula": 0.07886562500000022,
+  "cutoff_at_100": 0.078865625000617,
+  "cutoff_at_10000": 0.078865625000617,
+  "discount_plus_shock": 0.07
+ },
+ "monte_carlo": [
+  {
+   "sigma": 0.03,
+   "summation": 365.3812499999998,
+   "simulated": 365.06852519491224,
+   "standard_error": 0.2006592306527293
+  },
+  {
+   "sigma": 0.079,
+   "summation": 1100.3812499999976,
+   "simulated": 1099.3434734510452,
+   "standard_error": 0.665887197033743
+  },
+  {
+   "sigma": 0.15,
+   "summation": 2165.381249999997,
+   "simulated": 2163.2928882711567,
+   "standard_error": 1.339993025871539
+  }
+ ],
+ "capacity": [
+  {
+   "sigma": 0.1,
+   "threshold_over_capacity": 1.1640032010088008,
+   "formula": 1.1640032010088013
+  },
+  {
+   "sigma": 0.15,
+   "threshold_over_capacity": 1.5520042680117359,
+   "formula": 1.5520042680117347
+  },
+  {
+   "sigma": 0.25,
+   "threshold_over_capacity": 2.3280064020176017,
+   "formula": 2.3280064020176017
+  }
+ ],
+ "climb": {
+  "0.0": {
+   "rungs": 19,
+   "defaults_on_loan": 1,
+   "lender_cash": -41.523809523809526,
+   "first_principal": 41.523809523809526
+  },
+  "0.01": {
+   "rungs": 19,
+   "defaults_on_loan": 1,
+   "lender_cash": -41.523809523809526,
+   "first_principal": 41.523809523809526
+  },
+  "0.03": {
+   "rungs": 19,
+   "defaults_on_loan": 18,
+   "lender_cash": -41.523809523809575,
+   "first_principal": 41.523809523809526
+  },
+  "0.06": {
+   "rungs": 19,
+   "defaults_on_loan": 18,
+   "lender_cash": -41.523809523809575,
+   "first_principal": 41.523809523809526
+  },
+  "0.1": {
+   "rungs": 19,
+   "defaults_on_loan": null,
+   "lender_cash": null,
+   "first_principal": 41.523809523809526
+  }
+ },
+ "by_interest": [
+  {
+   "interest": 0.025,
+   "formula": 0.07746406250000008,
+   "cutoff": 0.07746406250043947,
+   "gross": 0.10246406250000009
+  },
+  {
+   "interest": 0.05,
+   "formula": 0.07886562500000022,
+   "cutoff": 0.078865625000617,
+   "gross": 0.1288656250000002
+  },
+  {
+   "interest": 0.1,
+   "formula": 0.08166875000000026,
+   "cutoff": 0.08166875000006257,
+   "gross": 0.18166875000000027
+  }
+ ]
+}

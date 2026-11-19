@@ -41,3 +41,27 @@ Failure would be: no rate at which both sides prefer graduation.
 
 One lender. With competing lenders the unsecured rate would be pushed towards the lower end of the range; a
 single lender could ask for the top of it. The guarantor's price is its cost, with no margin.
+
+## Outcome (2026-11-19)
+
+Numbers are in `results/SUMMARY.md`; the lender's expected values agree with a simulation of 400,000
+borrowers within two standard errors.
+
+| prediction | outcome |
+|---|---|
+| 1. at equal interest the lender prefers the guarantee, by 5% to 25% | Held: graduating at 5% is worth 8.1% less to the lender (6,565 against 7,143). |
+| 2. at 7.14% the lender is indifferent | Held: 0.996 of the guaranteed value. |
+| 3. the borrower gains 55 to 62 a cycle; both prefer graduation between 7.14% and 7.76% | The direction held and both numbers were off. The borrower saves 72 a cycle at 7.14% (738.7 against 666.7), and is indifferent at 7.98%, not 7.76%. I held the principal fixed when working it out; what is fixed is the amount due, so a higher rate also means a smaller principal. The range in which both prefer graduation is 7.14% to 7.98%. |
+| 4. the guarantee is gone after 34 to 36 cycles at 7.14% | Held: 35, against 44 at 5%. At the top of the range, 33. |
+
+What this shows:
+
+- **A lender will not drop a guarantor for nothing, and does not need to.** The guarantor was carrying the
+  shock risk. Paid for it (about 2.1 points on the unsecured rate), the lender is indifferent.
+- **Both sides gain from graduating**, because the guarantee has a cost that disappears with it: the
+  guarantor's fee, 0.6% of each loan, which is sunk by someone as long as the guarantee lasts.
+- **Charging for the risk speeds graduation up.** The exit bound allows each loan to grow by the rate
+  actually charged.
+
+What it does not show: how the gain is split. One lender could ask for nearly all of it; competing lenders
+would leave it with the borrower.

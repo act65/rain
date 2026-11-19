@@ -1,0 +1,167 @@
+{
+ "provenance": {
+  "utc": "2026-11-19T16:30:20+00:00",
+  "commit": "723a2bd",
+  "commit_short": "723a2bd",
+  "dirty": false,
+  "dirty_paths": "not recorded (stamp passed through the environment)",
+  "branch": null,
+  "python": "3.12.3",
+  "host": "devbox.europe-west4-a.c.dev-compute-d7766860.internal"
+ },
+ "parameters": {
+  "kappa": 0.04,
+  "delta": 0.03,
+  "fee_rate": 0.01,
+  "interest": 0.05
+ },
+ "results": {
+  "0.05": {
+   "sunk_share": 0.625,
+   "strategies": 154,
+   "by_ring_rate": {
+    "0.05": {
+     "best_gain": 0.0,
+     "strategy": "none",
+     "amount": 0.0,
+     "defaults_on_loan": 1,
+     "gain_over_fees_paid": 0.0
+    },
+    "0.04": {
+     "best_gain": 243.60037141898232,
+     "strategy": "wash, every cycle",
+     "amount": 100000.0,
+     "defaults_on_loan": 31,
+     "gain_over_fees_paid": 0.007858076497386526
+    },
+    "0.03": {
+     "best_gain": 1946.5164843148855,
+     "strategy": "wash, every cycle",
+     "amount": 100000.0,
+     "defaults_on_loan": 31,
+     "gain_over_fees_paid": 0.06279085433273825
+    },
+    "0.02": {
+     "best_gain": 4915.799502577716,
+     "strategy": "wash, every cycle",
+     "amount": 100000.0,
+     "defaults_on_loan": 31,
+     "gain_over_fees_paid": 0.158574177502507
+    },
+    "0.01": {
+     "best_gain": 10352.8561266774,
+     "strategy": "wash, every cycle",
+     "amount": 100000.0,
+     "defaults_on_loan": 31,
+     "gain_over_fees_paid": 0.3339631008605613
+    },
+    "0.0": {
+     "best_gain": 21184.780746728182,
+     "strategy": "wash, every cycle",
+     "amount": 100000.0,
+     "defaults_on_loan": 31,
+     "gain_over_fees_paid": 0.6833800240880059
+    }
+   },
+   "graduation_cycles": 44
+  },
+  "0.02": {
+   "sunk_share": 0.39999999999999997,
+   "strategies": 154,
+   "by_ring_rate": {
+    "0.05": {
+     "best_gain": 0.0,
+     "strategy": "none",
+     "amount": 0.0,
+     "defaults_on_loan": 1,
+     "gain_over_fees_paid": 0.0
+    },
+    "0.04": {
+     "best_gain": 0.0,
+     "strategy": "none",
+     "amount": 0.0,
+     "defaults_on_loan": 1,
+     "gain_over_fees_paid": 0.0
+    },
+    "0.03": {
+     "best_gain": 0.0,
+     "strategy": "none",
+     "amount": 0.0,
+     "defaults_on_loan": 1,
+     "gain_over_fees_paid": 0.0
+    },
+    "0.02": {
+     "best_gain": 0.0,
+     "strategy": "none",
+     "amount": 0.0,
+     "defaults_on_loan": 1,
+     "gain_over_fees_paid": 0.0
+    },
+    "0.01": {
+     "best_gain": 5307.480511139399,
+     "strategy": "wash, every cycle",
+     "amount": 100000.0,
+     "defaults_on_loan": 46,
+     "gain_over_fees_paid": 0.11538001111172606
+    },
+    "0.0": {
+     "best_gain": 20875.734264418483,
+     "strategy": "wash, every cycle",
+     "amount": 100000.0,
+     "defaults_on_loan": 46,
+     "gain_over_fees_paid": 0.45382031009605395
+    }
+   },
+   "graduation_cycles": 51
+  },
+  "0.0": {
+   "sunk_share": 0.0,
+   "strategies": 154,
+   "by_ring_rate": {
+    "0.05": {
+     "best_gain": 0.0,
+     "strategy": "none",
+     "amount": 0.0,
+     "defaults_on_loan": 1,
+     "gain_over_fees_paid": 0.0
+    },
+    "0.04": {
+     "best_gain": 0.0,
+     "strategy": "none",
+     "amount": 0.0,
+     "defaults_on_loan": 1,
+     "gain_over_fees_paid": 0.0
+    },
+    "0.03": {
+     "best_gain": 0.0,
+     "strategy": "none",
+     "amount": 0.0,
+     "defaults_on_loan": 1,
+     "gain_over_fees_paid": 0.0
+    },
+    "0.02": {
+     "best_gain": 0.0,
+     "strategy": "none",
+     "amount": 0.0,
+     "defaults_on_loan": 1,
+     "gain_over_fees_paid": 0.0
+    },
+    "0.01": {
+     "best_gain": 0.0,
+     "strategy": "none",
+     "amount": 0.0,
+     "defaults_on_loan": 1,
+     "gain_over_fees_paid": 0.0
+    },
+    "0.0": {
+     "best_gain": 0.0,
+     "strategy": "none",
+     "amount": 0.0,
+     "defaults_on_loan": 1,
+     "gain_over_fees_paid": 0.0
+    }
+   },
+   "graduation_cycles": 95
+  }
+ }
+}

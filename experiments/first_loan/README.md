@@ -141,3 +141,15 @@ What this shows:
 What it does not show: why a borrower would stay with a lender who never raises their loan; what competition
 between lenders does to the first loan (a rival could wait and poach the survivors, which removes the reason to
 pay for the information); or what the floor and the tail index are for real borrowers.
+
+
+### Two notes added later (2026-11-19)
+
+- **The interest here is the lender's margin.** The lender's profit on a repaid loan is taken as the interest,
+  which is right for a lender whose own cost of funds over the loan is nil. With a cost of funds `c` the
+  margin is `(i - c) / (1 + c)`, and at `i = c` there is no lending. The qualitative results do not depend on
+  this; the numbers do.
+- **The share of opportunists is derived in `strategic_borrower/`.** It is the share of applicants whose net
+  return on the money is below about their discount rate plus the shock rate. A borrower in that group who
+  does have some use for the money climbs the screening ladder and defaults when it stops growing; the lender
+  loses the first loan in cash either way, so the analysis above stands.

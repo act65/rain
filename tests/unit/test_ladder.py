@@ -161,3 +161,31 @@ def test_growth_pays_only_for_heavy_tails_and_identity_bound():
     bound = ladder.identity_bound(20, 0.01, 0.05)
     assert bound / 1.05 - 0.01 * bound == pytest.approx(20)  # principal less the fee is exactly the identity
     assert ladder.identity_bound(0, 0.01, 0.05) == 0
+
+
+# --- a borrower who chooses ---
+
+def test_repay_surplus_threshold_is_where_repaying_starts_to_pay():
+    i, q, r, phi, keep = 0.05, 0.02, 0.05, 0.01, 0.375
+    star = ladder.repay_surplus_threshold(i, q, r, phi, keep)
+    assert star == pytest.approx(0.0789, abs=2e-4)
+    beta = 1 / (1 + r)
+
+    def stays(sigma, principal=1.0):
+        due = principal * (1 + i)
+        start, repay = (sigma + i) * principal - phi * due, due * (1 - keep * phi)
+        value = sum(((1 - q) * beta) ** t * (start + (1 - q) * (principal - repay)) for t in range(3000))
+        return beta * value >= repay
+    assert stays(star + 1e-4) and not stays(star - 1e-4)
+    assert stays(star + 1e-4, principal=1e6) and not stays(star - 1e-4, principal=1e6)  # size does not matter
+    # Without fees it is close to the discount rate plus the shock rate
+    assert ladder.repay_surplus_threshold(i, q, r) == pytest.approx(r + q, abs=0.01)
+    assert ladder.repay_surplus_threshold(i, 0.0, r) == pytest.approx((1 + i) * r - 0 * i, abs=1e-12)
+
+
+def test_capacity_threshold_scales_with_capacity_and_return():
+    kw = dict(interest_rate=0.05, shock_rate=0.02, r=0.05, fee_rate=0.01, fee_returned=0.375)
+    star = ladder.repay_surplus_threshold(0.05, 0.02, 0.05, 0.01, 0.375)
+    assert ladder.capacity_threshold(1000, star, **kw) == pytest.approx(1000)  # at sigma* the threshold is the capacity
+    assert ladder.capacity_threshold(2000, 0.15, **kw) == pytest.approx(2 * ladder.capacity_threshold(1000, 0.15, **kw))
+    assert ladder.capacity_threshold(1000, 0.25, **kw) > ladder.capacity_threshold(1000, 0.15, **kw) > 1000

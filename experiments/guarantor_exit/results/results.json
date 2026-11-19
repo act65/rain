@@ -1,0 +1,54 @@
+{
+ "provenance": {
+  "utc": "2026-11-19T16:30:13+00:00",
+  "commit": "723a2bd",
+  "commit_short": "723a2bd",
+  "dirty": false,
+  "dirty_paths": "not recorded (stamp passed through the environment)",
+  "branch": null,
+  "python": "3.12.3",
+  "host": "devbox.europe-west4-a.c.dev-compute-d7766860.internal"
+ },
+ "parameters": {
+  "r": 0.05,
+  "shock": 0.02,
+  "fee_rate": 0.01,
+  "interest": 0.05,
+  "sunk_fee_share": 0.625
+ },
+ "premium_rate": 0.07142857142857144,
+ "arrangements": {
+  "a. guaranteed for ever": {
+   "lender_value": 7142.857142849743,
+   "simulated": 7135.810964580339,
+   "standard_error": 4.52116585403034,
+   "graduates_in_cycle": null,
+   "borrower_cost_first_cycle": 738.6904761904761,
+   "borrower_cost_cycle_100": 738.6904761904761
+  },
+  "b. graduating, unsecured at 5%": {
+   "lender_value": 6565.124565106491,
+   "simulated": 6560.952683029908,
+   "standard_error": 4.546838330126182,
+   "graduates_in_cycle": 44,
+   "borrower_cost_first_cycle": 743.452380952381,
+   "borrower_cost_cycle_100": 476.19047619047615
+  },
+  "c. graduating, unsecured at 7.14%": {
+   "lender_value": 7113.7128398577825,
+   "simulated": 7111.758112243656,
+   "standard_error": 5.375790997604704,
+   "graduates_in_cycle": 35,
+   "borrower_cost_first_cycle": 745.3571428571429,
+   "borrower_cost_cycle_100": 666.6666666666667
+  }
+ },
+ "guarantee_cost_rate": 0.0775625,
+ "borrower_indifferent_rate": 0.07976091008419561,
+ "graduation_by_unsecured_rate": {
+  "5.00%": 44,
+  "6.00%": 39,
+  "7.14%": 35,
+  "7.98%": 33
+ }
+}

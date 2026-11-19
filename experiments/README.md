@@ -34,6 +34,9 @@ contracts changed. `Economy()` still gives those rules so the experiments stay r
 | The first loan | `first_loan/` | What should a lender risk on a stranger, how large is the first loan, and when should the next be larger? | run 2026-11-19 |
 | Vouching | `vouching/` | Can a guarantor answer for a newcomer without opening a way to rob the lender, and what does a vouch cost? | run 2026-11-19 |
 | Graduation | `graduation/` | Can a record made under a guarantee, or with anyone, count towards unsecured credit without a ring profiting, and how long does a newcomer need a guarantor? | run 2026-11-19 |
+| Would a lender let the guarantor go? | `guarantor_exit/` | At what unsecured rate do both lender and borrower prefer to graduate? | run 2026-11-19 |
+| A patient ring | `patient_ring/` | How patient must a ring be to rob the graduated-credit rule, and what setting is safe? | run 2026-11-19 |
+| A borrower who chooses | `strategic_borrower/` | Does the threshold model follow from a borrower who weighs repaying against leaving? | run 2026-11-19 |
 | What a default really costs | `standing_value/` | Dividends, access to credit and the option to start again: the full account of a default on a ladder | run 2026-11-19 |
 
 Each README states its predictions (written before the first run) and then the outcome.

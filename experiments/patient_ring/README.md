@@ -39,3 +39,27 @@ Failure would be: a profitable strategy against a sunk share of 0, or against th
 
 A ring that discounts at less than the rate at which lending earns is passing up that return, so very patient
 rings are a stress test more than a forecast.
+
+## Outcome (2026-11-19)
+
+Numbers are in `results/SUMMARY.md`.
+
+| prediction | outcome |
+|---|---|
+| 1. a sunk share of 0.625 is robbed by rings at 3% or less, not at 5%; the switch is between 3.5% and 4.5% | Held, with the switch higher than I put it: a ring at 4% already gains (244, or 0.8% of the fees it pays), so the switch is between 4% and 5%. The gain is 6% of fees at 3%, 16% at 2% and 68% at 0. The best attack is the same throughout: wash 100,000 every cycle and default on the 31st loan. |
+| 2. setting the share for the most patient attacker allowed for is enough | Held: with the share for 2% (0.4), no strategy pays for a ring at 2% or above, and rings at 1% and 0 gain. With a share of 0 nothing pays at any rate. |
+| 3. graduation after 44, 50 to 53, and 94 to 96 cycles | Held: 44, 51 and 95. |
+
+What this shows:
+
+- **The sunk share is a dial, and the safe setting is known.** It is the discount rate of the most patient
+  attacker the lender allows for, over that rate plus the decay rate. A lender who set it at its own 5% is
+  exposed to anyone more patient, though the gains are thin: under 1% of the fees paid at 4%.
+- **Zero is always safe and still works.** With no credit for fees at all, the rule is: the largest amount
+  repaid to anyone, approached by raising each unsecured loan by the interest rate. That needs no assumption
+  about the attacker. The newcomer then needs the guarantor for 95 loans instead of 44.
+- **So the guarantee does two separate things.** It supplies the evidence that lifts the ceiling, at once and
+  whatever the dial says. The fees only set how fast the borrower may climb to it.
+
+What it does not show: which setting lenders should choose. That depends on how patient a ring can be, which
+is a fact about capital outside the protocol.
