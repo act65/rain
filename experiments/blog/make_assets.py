@@ -377,6 +377,64 @@ def numbers(keeper, peaks):
     n["static_loss_h05"] = fmt(bd["results"]["0.05"]["summary"]["static"]["mean"], 4)
     n["prior_loss_h05"] = fmt(bd["results"]["0.05"]["summary"]["prior"]["mean"], 4)
 
+    # a manufactured record, and what a reader's trust does to it
+    co = results("collusion")
+    n["wash_cost"] = pct(co["A"][1]["share_of_amount"], 3)
+    n["naive_bank_due"] = fmt(co["B"][1]["simulated_due"], 0)
+    n["naive_bank_profit"] = fmt(co["B"][1]["simulated_profit"], 0)
+    fine = {r["trust"]: r["multiple"] for r in co["F"]["fine_search"]}
+    n["half_trust_multiple"] = fmt(fine[0.5])
+    n["trust99_multiple"] = fmt(fine[0.99], 1)
+    n["trust999_multiple"] = fmt(fine[0.999], 0)
+    n["sybil20_multiple"] = fmt([r for r in co["D"] if r["trust"] == 0.5][0]["multiple"], 0)
+    honest = {r["trust"]: r for r in co["E"]}
+    n["portable_99"] = fmt(honest[0.99]["due"], 0)
+    n["portable_999"] = fmt(honest[0.999]["due"], 0)
+    n["portable_full"] = fmt(honest[1.0]["due"], 0)
+    n["portable_99_rungs"] = fmt(honest[0.99]["rungs_to_reclimb"], 0)
+    safe = {r["fee_rate"]: r["safe_trust"] for r in co["G"]}
+    n["safe_trust_1pct"] = pct(safe[0.01], 1)
+    n["safe_trust_5pct"] = pct(safe[0.05], 0)
+    n["safe_trust_ratio"] = fmt(safe[0.01] / 0.01, 1)
+    many = [r for r in co["F"]["confederates_for_100x"] if r["trust"] == 0.01][0]
+    n["small_trust_confederates"] = str(many["confederates"])
+    n["small_trust_loss"] = fmt(-many["simulated_profit"], 0)
+
+    # the first loan
+    fl = results("first_loan")
+    n["repeat_value"] = fmt(fl["repeat_value"], 3)
+    n["first_loan_loses_above"] = pct(fl["share_bounds"]["first_loan_loses_above"], 1)
+    capped = {r["share"]: r for r in fl["follow_up"]["capped_first_loan"]["rows"]}
+    for share, key in ((0.1, "10"), (0.2, "20"), (0.3, "30")):
+        n[f"first_due_{key}"] = fmt(capped[share]["best_first_due"], 1)
+    n["first_alone_20"] = fmt(-capped[0.2]["first_loan_alone"], 1)
+    n["first_value_20"] = fmt(capped[0.2]["value"], 1)
+    n["risk_ladder_value"] = fmt(-fl["policies"]["accept 10% risk on every loan (each 1.089 times the last)"]["simulated"], 0)
+    n["repeat_floor_value"] = fmt(fl["policies"]["repeat the floor"]["simulated"], 1)
+    n["growth_tail_5"] = fmt(fl["growth"][0]["largest_tail_index_with_growth"])
+    idc = fl["follow_up"]["identity_then_climb"][0]
+    n["identity_start"] = fmt(idc["start"], 1)
+    n["identity_climb_value"] = fmt(idc["value_climbing"], 1)
+
+    # vouching and graduation
+    vo, gr = results("vouching"), results("graduation")
+    n["vouch_naive_gain"] = fmt([r for r in vo["A"] if r["bank"] == "naive"][0]["gain_per_fake_borrower"], 0)
+    n["vouch_burn_loss"] = fmt([r for r in vo["B"] if r["fake_borrowers"] == 20 and r["guarantees_count_against_the_guarantor"]][0]["bank_loss"], 0)
+    n["vouch_burn_loss_uncounted"] = fmt([r for r in vo["B"] if r["fake_borrowers"] == 20 and not r["guarantees_count_against_the_guarantor"]][0]["bank_loss"], 0)
+    costs = {r["opportunist_share"]: r["formula"] for r in vo["C"]["vouch_cost"]}
+    n["vouch_cost_sure"], n["vouch_cost_10"], n["vouch_cost_50"] = fmt(costs[0.0], 0), fmt(costs[0.1], 0), fmt(costs[0.5], 0)
+    n["vouch_surplus_threshold"] = pct(vo["C"]["surplus_threshold"], 1)
+    worth = {r["surplus_rate"]: r for r in vo["C"]["borrower"]}
+    n["vouch_net_with"], n["vouch_net_alone"] = fmt(worth[0.06]["with_guarantor"], 0), fmt(worth[0.06]["alone"], 0)
+    n["guaranteed_round_cost"] = fmt(gr["one_guaranteed_round"]["simulated_cost"], 0)
+    n["graduation_strategies"] = str(gr["rule"]["strategies"])
+    n["graduation_control_loss"] = fmt(gr["controls"]["evidence alone"]["best"]["gain"], 0)
+    n["graduation_cycles"] = str(gr["newcomer"]["with_guarantor"]["cycles_to_graduate"])
+    n["graduation_guarantor_cost"] = fmt(gr["newcomer"]["with_guarantor"]["guarantor_expected_cost"], 0)
+    n["graduation_offer_40"] = fmt(gr["newcomer"]["with_guarantor"]["offers"][40], 0)
+    n["credit_per_point"] = fmt(gr["per_point"]["credit_per_point"], 3)
+    n["sunk_fee_share"] = pct(gr["parameters"]["sunk_fee_share"], 1)
+
     # the ladder's bounds (i = r = 5%, surplus 3%; risk 10%, shocks 2%, tail index 1)
     n["k_screen"] = fmt(ladder.screening_growth_factor(0.10, 1.0, 0.02), 3)
     n["k_stay"] = fmt(ladder.incentive_growth_factor(0.05, 0.03, 0.05), 3)
@@ -399,8 +457,8 @@ def main():
              f"# Source commit {stamp['commit_short']} (dirty: {stamp['dirty']}), {stamp['utc']}.",
              f"commit: \"{stamp['commit_short']}\""]
     lines += [f"{key}: \"{value}\"" for key, value in numbers(keeper, peaks).items()]
-    # Tallied by hand on 2026-11-19 from the outcome tables in the eleven experiment READMEs.
-    lines += ['predictions_total: "72"', 'predictions_held: "54"', 'predictions_partly: "11"', 'predictions_wrong: "7"']
+    # Tallied by hand on 2026-11-19 from the outcome tables in the fifteen experiment READMEs.
+    lines += ['predictions_total: "98"', 'predictions_held: "71"', 'predictions_partly: "18"', 'predictions_wrong: "9"']
     (out / "rain.yml").write_text("\n".join(lines) + "\n")
     print("\n".join(lines))
 
