@@ -1,6 +1,6 @@
 # Damping a surge: results
 
-Commit `1805efb` (dirty: True), 2026-11-19T12:36:12+00:00.
+Commit `514658d` (dirty: False), 2026-11-19T13:26:50+00:00.
 
 Value of a point / its cost. Farming pays above 1.
 

@@ -1,6 +1,6 @@
 # Exit scam: results
 
-Commit `1805efb` (dirty: True), 2026-11-19T12:36:09+00:00.
+Commit `514658d` (dirty: False), 2026-11-19T13:25:26+00:00.
 
 42 grid points; worst disagreement between simulation and formula 9.30e-08 (the simulation also pays the fee on each of the four defaulted loans, which the formula leaves out; it is added back for this comparison).
 

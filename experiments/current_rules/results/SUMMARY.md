@@ -1,6 +1,6 @@
 # The first four experiments under the current rules: results
 
-Commit `1805efb` (dirty: True), 2026-11-19T12:36:26+00:00.
+Commit `514658d` (dirty: False), 2026-11-19T13:27:06+00:00.
 
 A point is worth v = 0.0150 DMD and costs 0.04 DMD.
 

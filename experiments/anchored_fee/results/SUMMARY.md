@@ -1,6 +1,6 @@
 # Anchored fee: results
 
-Commit `1805efb` (dirty: True), 2026-11-19T12:36:11+00:00.
+Commit `514658d` (dirty: False), 2026-11-19T13:25:28+00:00.
 
 ## Value of a point / what it cost, by cycle (farming pays above 1)
 

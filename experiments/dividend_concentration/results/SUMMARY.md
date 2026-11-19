@@ -1,6 +1,6 @@
 # Dividend concentration: results
 
-Commit `1805efb` (dirty: True), 2026-11-19T12:36:55+00:00. 200 agents, 800 cycles, 5 seeds; mean (min to max over seeds).
+Commit `514658d` (dirty: False), 2026-11-19T13:27:43+00:00. 200 agents, 800 cycles, 5 seeds; mean (min to max over seeds).
 
 | measure | decay 0.03 | decay 0.005 | decay 0.0 |
 |---|---|---|---|

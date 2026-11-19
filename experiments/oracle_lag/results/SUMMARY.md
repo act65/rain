@@ -1,6 +1,6 @@
 # Oracle lag: results
 
-Commit `1805efb` (dirty: True), 2026-11-19T12:37:00+00:00.
+Commit `514658d` (dirty: False), 2026-11-19T13:27:48+00:00.
 
 Dividends over cycles 300 to 700, relative to no lag.
 

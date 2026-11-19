@@ -1,6 +1,6 @@
 # Decaying counts against the exact filter: results
 
-Commit `1805efb` (dirty: True), 2026-11-19T11:12:19+00:00. 2000 users, 300 promises, 5 seeds; log loss, mean over seeds.
+Commit `514658d` (dirty: False), 2026-11-19T13:26:49+00:00. 2000 users, 300 promises, 5 seeds; log loss, mean over seeds.
 
 | h | prior only | static | forgetting, gamma = 1 - h | exact | gap closed (mean, min to max) | best gamma (by seed) |
 |---|---|---|---|---|---|---|
