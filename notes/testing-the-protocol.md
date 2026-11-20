@@ -28,7 +28,7 @@ Three layers, each checking the one above it.
 - **A model of the protocol's accounting** in plain Python, with no blockchain. One scenario (a repayment, a default, a reward lost to delinquency, decay, a settlement, two rounds of fee payouts) is replayed through both the contracts and the model, and they must agree to nine decimal places. The model is what makes large simulations cheap.
 - **Experiments** run on the model. Where a result can be worked out on paper it is, and the simulation is an independent check of the formula.
 
-Each experiment's predictions were written down, with numbers, before it was run. Each has a control that must fail: for example, with worthless reputation every loan should be defaulted on, and it is. Of 126 predictions, 93 held, 22 held in part, and 11 were wrong. Several of the wrong ones are the most useful results below.
+Each experiment's predictions were written down, with numbers, before it was run. Each has a control that must fail: for example, with worthless reputation every loan should be defaulted on, and it is. Of 132 predictions, 99 held, 22 held in part, and 11 were wrong. Several of the wrong ones are the most useful results below.
 
 ## Aim 2 first: a stable value needs an anchor
 
@@ -167,6 +167,14 @@ A shop accepting a note is a lender, so it reads the payer's record and has a li
 - **Offline, standing is spent and hardly built.** A stranger's limit is 108.9. Divided among five shops, no note is as large as what the payer has already shown, and after 30 rounds the limit is still 108.9. Reading notes that were owed at once as their total fixes this where shops trust each other fully or share a hub: the limit reaches 1,401, the same climb as a ladder of loans. Where they trust each other at 90% it stops at 126. We predicted a slower climb. It is a ceiling, for the reason an extraordinary record needs extraordinary trust.
 - **Reading totals gives a ring nothing.** Splitting a wash among confederates costs the same fees and is believed less: 1.40 times a stranger's offer, against 1.73 for one confederate, from a bank that trusts strangers at 90%.
 
+**How fast can a note be copied?** Dividing the limit bounds the take only if the shops guess the number of places correctly. An attacker who chooses how many shops to visit, in a market of 1,000 where shops guess five, takes 200 limits. A signed note can be copied to anyone who will take it, so nothing on the payer's side prevents this, and the bound has to come from what the shops share.
+
+- Dividing by every shop in the market gives one limit exactly. Each shop then accepts 0.1% of it.
+- If shops swap what they know with each other, once per visit the attacker makes, the take is 2.3 limits, and 2.9 in a market ten times larger. It grows with the logarithm of the market.
+- If notes are carried to the chain and shops sync from it, the take does not depend on the market's size. It is the number of shops the attacker reaches while the news gets to the chain and back: 2.9 limits when carrying a note takes five visits and a shop syncs every five.
+- Speed is the parameter. An attacker with ten helpers is ten times faster and takes 21 limits. What a reward for carrying notes buys is a shorter delay.
+- Shops that refuse everyone while their own sync is more than two visits old cap the take at 2.4 limits whatever the attacker does, and are willing to deal 33% of the time. That setting is a dial between staying available and staying consistent.
+
 The design this points to for a market without a connection is a hub that answers for the notes it allows, which is the guarantor above in another role. It has not been built.
 
 ## What the fees should pay for
@@ -210,4 +218,4 @@ uv run python experiments/standing_value/run.py      # any experiment; each writ
 uv run python experiments/blog/make_assets.py out/   # the charts and every number quoted here
 ```
 
-Every number in this note is read from a file that the last command generates (commit `9c488c4`).
+Every number in this note is read from a file that the last command generates (commit `ffff09c`).
