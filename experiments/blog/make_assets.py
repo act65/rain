@@ -36,6 +36,7 @@ plt.rcParams.update({
     "axes.grid": True, "grid.color": GRID, "grid.linewidth": 0.8, "axes.axisbelow": True,
     "figure.facecolor": SURFACE, "axes.facecolor": SURFACE, "savefig.facecolor": SURFACE,
     "lines.linewidth": 2, "legend.frameon": False, "svg.fonttype": "none",
+    "svg.hashsalt": "rain",  # with no date in the metadata, the same data gives the same file
 })
 
 
@@ -54,7 +55,7 @@ def end_label(ax, x, y, text, dy=0.0):
 
 def save(fig, out, name):
     fig.tight_layout()
-    fig.savefig(out / name, format="svg")
+    fig.savefig(out / name, format="svg", metadata={"Date": None})
     if os.environ.get("RAIN_PREVIEW"):  # bitmaps for checking the layout by eye
         fig.savefig(out / name.replace(".svg", ".png"), format="png", dpi=110)
     plt.close(fig)

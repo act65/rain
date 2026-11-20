@@ -22,7 +22,7 @@ tags:
   - simulation
 ---
 
-[Rain]({{ site.baseurl }}/rain/) is a public log of promises and a reputation earned by keeping them. This post is about whether it works: what we want from it, how each aim was turned into something that could fail, and what happened. Each experiment's predictions and outcomes are in [`experiments/`](https://github.com/act65/rain/tree/main/experiments). A companion post, [Reputation as a belief]({{ site.baseurl }}/reputation-as-belief/), derives the rules from a Bayesian argument.
+[Rain]({{ site.baseurl }}/rain/) is a public log of promises and a reputation earned by keeping them. This note is about whether it works: what we want from it, how each aim was turned into something that could fail, and what happened. Each experiment's predictions and outcomes are in [`experiments/`](https://github.com/act65/rain/tree/main/experiments). A post, [Reputation as a belief]({{ site.baseurl }}/reputation-as-belief/), derives the rules from a Bayesian argument.
 
 The result to remember is this. **Reputation that is valued by the fee income it earns cannot be good collateral. What deters default is losing a place on a ladder of loans that would have to be climbed again.** The protocol's job is to keep the record true and to make every line of it cost something. What a line is worth as evidence depends on who is reading: a lender who trusts the counterparty can take it at face value, and one who trusts nobody can take it for what it cost. The same reading tells a shop with no connection how much to accept from a payer it cannot check.
 
@@ -230,4 +230,4 @@ uv run python experiments/standing_value/run.py      # any experiment; each writ
 uv run python experiments/blog/make_assets.py out/   # the charts and every number quoted here
 ```
 
-Every number in this post is read from a file that the last command generates (commit `{{ n.commit }}`).
+Every number in this note is read from a file that the last command generates (commit `{{ n.commit }}`).

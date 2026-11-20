@@ -210,4 +210,4 @@ uv run python experiments/standing_value/run.py      # any experiment; each writ
 uv run python experiments/blog/make_assets.py out/   # the charts and every number quoted here
 ```
 
-Every number in this post is read from a file that the last command generates (commit `f9415c7`).
+Every number in this post is read from a file that the last command generates (commit `77daed9`).
