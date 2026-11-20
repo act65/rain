@@ -109,6 +109,7 @@ class Economy:
     fee_credits: Dict[str, float] = field(default_factory=dict)  # fees on promises kept this cycle (issuance only)
     agents: Dict[str, Agent] = field(default_factory=dict)
     loans: List[Loan] = field(default_factory=list)
+    allowances: List[dict] = field(default_factory=list)  # funds locked for offline notes (OfflineAllowanceScript)
     log: List[Entry] = field(default_factory=list)  # resolved loan promises, as a reader of the chain would see them
     dividend_history: List[float] = field(default_factory=list)
 
@@ -368,6 +369,67 @@ class Economy:
         self.log.append(Entry(promisor=payer, promisee=payee, amount=amount, kept=kept, time=self.cycle,
                               fee_paid=fee, created=self.cycle if issued is None else issued))
         return kept
+
+    # --- allowances backed by locked funds (OfflineAllowanceScript) ---
+
+    def open_allowance(self, payer: str, amount: float, float_: float = 0.0) -> int:
+        """`payer` locks `amount` to pay notes from, and `float_` to refund presenters' fees and reward whoever proves an overspend."""
+        if amount + float_ > self.agents[payer].money + 1e-9:
+            raise ValueError(f"{payer} cannot lock {amount + float_}")
+        self.agents[payer].money -= amount + float_
+        self.allowances.append(dict(payer=payer, amount=amount, locked=amount, float=float_, presented=0.0, overspent=False, closed=False))
+        return len(self.allowances) - 1
+
+    def present_allowance_note(self, allowance_id: int, payee: str, amount: float, issued: Optional[float] = None,
+                               presenter: Optional[str] = None) -> bool:
+        """
+        A note under an allowance is presented; the presenter pays the fee. While the locked amount lasts the
+        payee is paid from it and the fee refunded from the float. The first note past the amount gives the rest
+        of the float to its presenter. A note the locked funds cannot cover is paid by the payer in person if
+        they can, and is otherwise a broken promise, the payee receiving whatever was still locked. Returns
+        whether the note was paid in full.
+        """
+        a = self.allowances[allowance_id]
+        if a["closed"]:
+            raise ValueError("Allowance closed")
+        payer, presenter = a["payer"], payee if presenter is None else presenter
+        fee = self.quote_fee(amount)
+        self._pay(presenter, None, fee)
+        a["presented"] += amount
+        if a["presented"] > a["amount"] + 1e-9 and not a["overspent"]:
+            a["overspent"] = True
+            self.agents[presenter].money += a["float"]
+            a["float"] = 0.0
+        if a["locked"] + 1e-9 >= amount:
+            a["locked"] -= amount
+            self.agents[payee].money += amount
+            refund = min(fee, a["float"])
+            a["float"] -= refund
+            self.agents[presenter].money += refund
+            kept = True
+        else:
+            part = a["locked"]
+            kept = self.agents[payer].money + 1e-9 >= amount - part + fee
+            a["locked"] = 0.0
+            self.agents[payee].money += part
+            if kept:
+                self._pay(payer, payee, amount - part)
+                self._pay(payer, presenter, fee)
+        if kept:
+            self.fulfil_promise(payer, fee_paid=fee)
+        else:
+            self.default_promise(payer, fee_paid=fee)
+        self.log.append(Entry(promisor=payer, promisee=payee, amount=amount, kept=kept, time=self.cycle,
+                              fee_paid=fee, created=self.cycle if issued is None else issued))
+        return kept
+
+    def close_allowance(self, allowance_id: int) -> float:
+        """Returns what is left of the locked funds and the float to the payer."""
+        a = self.allowances[allowance_id]
+        returned = a["locked"] + a["float"]
+        self.agents[a["payer"]].money += returned
+        a.update(locked=0.0, float=0.0, closed=True)
+        return returned
 
     def _record_guarantee(self, loan: Loan, kept: bool) -> None:
         self.log.append(Entry(promisor=loan.guarantor, promisee=loan.lender, amount=loan.principal + loan.interest,
