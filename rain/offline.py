@@ -107,6 +107,7 @@ class Certificate:
     allowance_id: int
     payer: str
     amount: int
+    float: int  # forfeited to whoever proves an overspend
     valid_until: int
 
 
@@ -122,9 +123,9 @@ def certificate_digest(certificate: Certificate) -> bytes:
     from eth_abi import encode
     from eth_utils import keccak
     c = certificate
-    return keccak(encode(["bytes32", "uint256", "address", "uint256", "address", "uint256", "uint256"],
+    return keccak(encode(["bytes32", "uint256", "address", "uint256", "address", "uint256", "uint256", "uint256"],
                          [keccak(text=CERTIFICATE_TAG), int(c.chain_id), str(c.script), int(c.allowance_id), str(c.payer),
-                          int(c.amount), int(c.valid_until)]))
+                          int(c.amount), int(c.float), int(c.valid_until)]))
 
 
 def sign_certificate(attester_account: Any, certificate: Certificate) -> bytes:

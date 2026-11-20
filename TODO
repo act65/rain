@@ -28,5 +28,7 @@ Open after the offline and fee-use experiments (2026-11-20):
   different result disputes) instead of trusted. Open: what voting weight is (reputation costs fees and fades, so
   it is a candidate, but it favours whoever transacts most), and how a DAO decides one person, one identity.
 - offline, after `offline_race/`: a market for carrying notes (what reward buys what delay; a tip in
-  OfflineNoteScript); a fraud proof a shop can check with no chain (a chain-signed allowance the payer carries,
-  so notes totalling more than it prove the overspend); gossip between shops in the client.
+  OfflineNoteScript); gossip between shops in the client. (The allowance with a
+  provable overspend is built: OfflineAllowanceScript.)
+- allowance: the attester is the oracle's key, trusted to certify only allowances that exist; a light-client proof
+  would remove that. A tip for carriers. What the bonded reputation adds. Whether payers will lock a float.

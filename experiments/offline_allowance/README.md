@@ -103,5 +103,5 @@ What this shows:
   life, and within that life the news is already working.
 
 What it does not show: what a carrier's reward does to the delay; what the bonded reputation adds; whether
-payers would lock two or three times what they mean to spend. The certificate does not yet state the float, so
-a shop cannot see it offline; it should.
+payers would lock two or three times what they mean to spend. When this was run the certificate did not state the float, so a shop could not see it
+offline. It now does (`rain.offline.Certificate.float`).

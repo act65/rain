@@ -49,7 +49,7 @@ def opened(s, bond=BOND):
     s.expires = chain.blocks.head.timestamp + 7 * DAY
     tx = s.allow.open(AMOUNT, FLOAT, s.expires, 7 * DAY, bond, sender=s.bob)
     s.id = ev(tx)["AllowanceOpened"]["allowanceId"]
-    s.cert = Certificate(chain.chain_id, s.allow.address, s.id, s.bob.address, AMOUNT, s.expires)
+    s.cert = Certificate(chain.chain_id, s.allow.address, s.id, s.bob.address, AMOUNT, FLOAT, s.expires)
     s.cert_sig = sign_certificate(s.oracle, s.cert)
     return s.id
 
@@ -87,7 +87,7 @@ def test_a_payee_checks_a_note_with_no_connection(s):
     assert check(n, sig, s.cert, s.cert_sig, now=now) == (True, "within the allowance")
     assert not check(n, sig, s.cert, sign_certificate(s.carol, s.cert), now=now)[0]  # not the attester's certificate
     assert not check(n, sig, s.cert, s.cert_sig, now=s.expires + 1)[0]  # expired
-    bigger = Certificate(chain.chain_id, s.allow.address, s.id, s.bob.address, 10 * AMOUNT, s.expires)
+    bigger = Certificate(chain.chain_id, s.allow.address, s.id, s.bob.address, 10 * AMOUNT, FLOAT, s.expires)
     assert not check(n, sig, bigger, s.cert_sig, now=now)[0]  # the payer altered the certificate
     forged = sign_note(s.carol, chain.chain_id, s.engine.address, s.allow.address, n)
     assert not check(n, forged, s.cert, s.cert_sig, now=now)[0]  # not the payer's note
@@ -106,6 +106,7 @@ def test_a_note_within_the_allowance_is_paid_whatever_becomes_of_the_payer(s):
     assert s.usdc.balanceOf(s.outsider) == before[1]  # the carrier's fee came back from the float
     a = s.allow.allowances(s.id)
     assert (a["locked"], a["float"], a["presented"], a["overspent"]) == (60 * E18, FLOAT - 4 * E18 // 10, 40 * E18, False)
+    assert certificate_digest(s.cert) == bytes(s.allow.certificateDigest(s.id))  # the certificate states the float as locked
 
 
 def test_an_overspend_is_proved_by_the_notes_alone(s):

@@ -45,7 +45,8 @@ interface IAllowanceCurrency {
  * Before losing the connection a payer opens an allowance: they lock `amount` of the currency here,
  * and a further `float`. The attester (a key every payee knows) then signs a certificate saying so,
  * which the payer carries: "this payer may have at most `amount` outstanding in notes, signed up to
- * `validUntil`". A note under the allowance is a signed promise whose nonce names the allowance
+ * `validUntil`, and forfeits `float` if they exceed it". The float is what overspending costs the
+ * payer, so a payee can weigh it against how many others the payer could reach. A note under the allowance is a signed promise whose nonce names the allowance
  * (allowance id in the high 128 bits, the payer's serial number in the low 128).
  *
  *   open         (payer)   locks the amount and the float; may bond reputation.
@@ -82,6 +83,7 @@ contract OfflineAllowanceScript {
     struct Allowance {
         address payer;
         uint256 amount;     // the most the payer's notes may total
+        uint256 floatLocked; // the float as it was locked (what the certificate states)
         uint256 validUntil; // notes must be signed by this time
         uint256 closesAt;   // notes must be presented by this time
         uint256 locked;     // what is left of the amount
@@ -148,6 +150,7 @@ contract OfflineAllowanceScript {
         a.closesAt = validUntil + presentWithin;
         a.locked = amount;
         a.float = float;
+        a.floatLocked = float;
         a.bond = bond;
         emit AllowanceOpened(allowanceId, msg.sender, amount, float, validUntil, a.closesAt);
     }
@@ -156,7 +159,7 @@ contract OfflineAllowanceScript {
     function certificateDigest(uint256 allowanceId) public view returns (bytes32) {
         Allowance storage a = allowances[allowanceId];
         require(a.payer != address(0), "OfflineAllowance: No such allowance");
-        return keccak256(abi.encode(CERTIFICATE_TAG, block.chainid, address(this), allowanceId, a.payer, a.amount, a.validUntil));
+        return keccak256(abi.encode(CERTIFICATE_TAG, block.chainid, address(this), allowanceId, a.payer, a.amount, a.floatLocked, a.validUntil));
     }
 
     /// @notice Records a note signed under an allowance, and pays it while the locked amount lasts. The caller pays the fee.

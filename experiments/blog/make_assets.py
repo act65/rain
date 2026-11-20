@@ -653,6 +653,13 @@ def numbers(keeper, peaks):
     n["race_fresh_cap"] = fmt(race["freshness"]["cap"], 1)
     n["race_fresh_available"] = pct(race["freshness"]["available"])
 
+    # offline: an allowance backed by locked funds
+    al = results("offline_allowance")
+    n["allow_take"] = fmt(al["race"]["with_certificate"]["mean"], 1)
+    n["allow_loss_locked"], n["allow_loss_plain"] = fmt(al["loss"]["locked"]["mean"], 1), fmt(al["loss"]["plain"]["mean"], 1)
+    n["allow_gain_2"] = fmt(-al["float"]["2"]["alone"])
+    n["allow_gain_5_helpers"] = fmt(al["float"]["5"]["ten_helpers"], 0)
+
     # what the fees could pay for
     fu = results("fee_use")
     rules = {name.split(".")[0] + ("b" if "someone else" in name else ""): r for name, r in fu["rules"].items()}
@@ -698,8 +705,8 @@ def main():
              f"commit: \"{stamp['commit_short']}\""]
     n = numbers(keeper, peaks)
     lines += [f"{key}: \"{value}\"" for key, value in n.items()]
-    # Tallied by hand on 2026-11-20 from the outcome tables in the twenty-one experiment READMEs.
-    tally = dict(predictions_total="132", predictions_held="99", predictions_partly="22", predictions_wrong="11", experiments_count="21")
+    # Tallied by hand on 2026-11-20 from the outcome tables in the twenty-two experiment READMEs.
+    tally = dict(predictions_total="137", predictions_held="103", predictions_partly="23", predictions_wrong="11", experiments_count="22")
     lines += [f'{key}: "{value}"' for key, value in tally.items()]
     (out / "rain.yml").write_text("\n".join(lines) + "\n")
     render_note({**n, **tally, "commit": stamp["commit_short"]}, out)
