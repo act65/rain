@@ -1,0 +1,93 @@
+{
+ "provenance": {
+  "utc": "2026-11-20T11:06:14+00:00",
+  "commit": "4c3a64816e0cbbed123122fe8adfbc490c947be8",
+  "commit_short": "4c3a648",
+  "dirty": false,
+  "dirty_paths": "not recorded (stamp passed through the environment)",
+  "branch": null,
+  "python": "3.12.3",
+  "host": "devbox.europe-west4-a.c.dev-compute-d7766860.internal"
+ },
+ "parameters": {
+  "market": 1000,
+  "guess": 5,
+  "delay": 5,
+  "sync_rate": 0.2,
+  "seeds": 20,
+  "fee_rate": 0.01,
+  "expiry": 10
+ },
+ "race": {
+  "with_certificate": {
+   "mean": 2.9099999999999993,
+   "standard_error": 0.06403124237432849
+  },
+  "without": {
+   "mean": 2.9099999999999993,
+   "standard_error": 0.06403124237432849
+  },
+  "identical_run_by_run": true,
+  "formula": 2.903331113225399,
+  "ten_helpers": {
+   "mean": 21.12,
+   "standard_error": 0.22821965411926246
+  },
+  "ten_helpers_formula": 20.90033333111115
+ },
+ "expiry": {
+  "alone": {
+   "mean": 2.0,
+   "standard_error": 0.0
+  },
+  "ten_helpers": {
+   "mean": 17.07,
+   "standard_error": 0.12420272053974372
+  },
+  "cap_alone": 2.0,
+  "cap_ten_helpers": 20.0
+ },
+ "loss": {
+  "plain": {
+   "mean": 2.9391000000000003,
+   "standard_error": 0.06467155479807178
+  },
+  "locked": {
+   "mean": 1.9390999999999998,
+   "standard_error": 0.06467155479807178
+  }
+ },
+ "ordinary_payers_unpaid": {
+  "locked": 0.0,
+  "plain": 0.026
+ },
+ "float": {
+  "0": {
+   "alone": 1.9100000000000001,
+   "ten_helpers": 20.119999999999997
+  },
+  "1": {
+   "alone": 0.9100000000000001,
+   "ten_helpers": 19.119999999999997
+  },
+  "2": {
+   "alone": -0.08999999999999986,
+   "ten_helpers": 18.119999999999997
+  },
+  "5": {
+   "alone": -3.09,
+   "ten_helpers": 15.119999999999997
+  }
+ },
+ "liars": {
+  "by": 14,
+  "believing_hearsay": {
+   "mean": 0.9551999999999999,
+   "standard_error": 0.012870938296471585
+  },
+  "checking_notes": {
+   "mean": 0.0,
+   "standard_error": 0.0
+  }
+ }
+}

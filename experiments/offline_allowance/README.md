@@ -71,3 +71,37 @@ The attester's key is trusted to sign only certificates for allowances that exis
 with the questions that raises, see TODO). Shops know the attester's key and the time. The bonded reputation
 is not valued here (`fee_use/`: about 3% of what a borrower on a ladder owes). The allowance covers payments
 only: a shop that wants to give credit beyond the locked funds is a lender again, and `offline/` applies.
+
+## Outcome (2026-11-20)
+
+Numbers are in `results/SUMMARY.md`. Both controls behaved: without locked funds shops lose the whole take
+(2.94 allowances, fees included), and shops that believe hearsay shut the honest payer out.
+
+| prediction | outcome |
+|---|---|
+| 1. the race is unchanged: 2.90 | Held: 2.91 with a certificate and without, identical run by run. This is by construction (a shop that has heard nothing accepts either way), and the run confirms the two rules were implemented as the same rule. |
+| 2. expiry caps the take at `min(race, k T / m)`: 2 alone, 20 with ten helpers | Held alone (2.00 in every run). **Wrong with helpers: 17.1, not 20.** The two limits act together, not one or the other: within the certificate's life the news has already caught up with some of the shops the helpers reach. |
+| 3. shops lose one limit less (1.90 against 2.90); ordinary payers leave nothing unpaid | Held: 1.94 against 2.94, the difference from my figures being the 1% fee, which I left out. Payers who stay within the allowance leave 0 of 10,000 notes unpaid. With plain notes the same payers leave 2.6% unpaid (the 2% hit by a shock, on a sample of 2,000). The 10% I quoted is the rate in `offline/`, where the limit is credit; this arm compares like with like. |
+| 4. the attacker's gain alone: 1.90, 0.90, -0.10, -3.10 at floats of 0, 1, 2, 5; positive at all four with ten helpers | Held: 1.91, 0.91, -0.09, -3.09; and 20.1, 19.1, 18.1, 15.1. |
+| 5. hearsay shuts out more than 95% of the market by time 14; proof shuts out nobody | Held: 95.5%, and none. |
+
+What this shows:
+
+- **The allowance does not win the race.** Copies still reach shops that have not heard. What an attacker
+  gets accepted is the same with or without it.
+- **It separates payment from credit.** A payer who stays within the allowance is certain to pay, whatever
+  happens to them, so a shop accepting such a note needs no belief about the payer at all. The only risk left
+  is deliberate overspending.
+- **It takes one allowance off the shops' loss**, because the locked funds pay the first notes presented.
+- **The float is a deterrent, and its size is a statement about speed.** Overspending loses money when the
+  float exceeds what the attacker can get accepted beyond the allowance: about two allowances here for an
+  attacker alone, and more than fifteen for one with ten helpers. A shop can read the float off the
+  certificate (once it is added to it) and accept accordingly.
+- **Proof cannot be used against an honest payer.** A shop that acts only on notes it can check cannot be
+  told to refuse someone: the notes that would prove an overspend do not exist.
+- **Expiry and news act together.** A short-lived certificate caps the take at the shops reachable in its
+  life, and within that life the news is already working.
+
+What it does not show: what a carrier's reward does to the delay; what the bonded reputation adds; whether
+payers would lock two or three times what they mean to spend. The certificate does not yet state the float, so
+a shop cannot see it offline; it should.
