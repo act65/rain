@@ -43,6 +43,10 @@ This interpreter model is what guarantees the security and integrity of the ecos
     *   **Purpose:** To create a verifiable, future obligation.
     *   **Function:** Logs a promise, links it to the `actionId`, and charges the fee to the promisor: a percentage of the amount promised, with a minimum. The fee paid is recorded with the promise, and a kept promise earns reputation in proportion to it (`fee / pointPrice`). The promisor must have authorized the script, and cannot be the promisee.
 
+*   `monitoredSignedPromise(actionId, signedPromise, signature, feePayer)`
+    *   **Purpose:** To record a promise that was made with no connection to the chain.
+    *   **Function:** Logs a promise whose promisor signed its terms (promisee, asset, amount, when it was signed, until when it may be recorded, how long they then have to keep it, a nonce) for the calling script. The signature is the consent, so no on-chain authorization is needed and none can be withdrawn afterwards. The fee is charged to `feePayer`, so a promisor with an empty account cannot stop the promise, or its default, being recorded. Each (promisor, nonce) is recorded once. `rain.offline` computes what to sign without calling the chain.
+
 *   `monitoredTransfer(actionId, ...)` & `monitoredNftTransfer(actionId, ...)`
     *   **Purpose:** To execute a value transfer of a fungible (ERC20) or non-fungible (ERC721) token.
     *   **Function:** Securely moves assets, logging the transfer as part of the `actionId`'s session.
@@ -73,6 +77,8 @@ Anyone can deploy a script; no protocol role is involved. A script has exactly t
 *   `CalculusEngine.approveScript(script, asset, amount)`: the script may move this much of your tokens (including the protocol fees you owe). An allowance given to one script is useless to another.
 *   `CalculusEngine.setScriptNftApproval(script, asset, bool)`: the script may move your NFTs of a collection.
 *   `RainReputation.approveStake(script, amount)`: the script may bond (and on default destroy) this much of your reputation.
+
+A signature grants one power, once: a script may record the promise you signed for it (`monitoredSignedPromise`). It moves no tokens.
 
 The `ReputationClaimToken` needs no minter role either: an RCT can only be minted for a promise the engine records as `Defaulted`, by that promise's script, once, with terms copied from the log.
 
