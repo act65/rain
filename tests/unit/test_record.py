@@ -171,3 +171,52 @@ def test_graduated_credit_by_hand():
     undated = [Entry(A, FRIEND, 10_000, True, time=1, fee_paid=100), Entry(A, BANK, 162.5, True, time=3, fee_paid=1.625),
                Entry(A, FRIEND, 10_000, True, time=3, fee_paid=100)]
     assert graduated_credit(undated, A, **kw) == pytest.approx(1.05 * 162.5 + 62.5)
+
+
+# --- what was owed at once (`concurrent=True`) ---
+
+M1, M2, M3 = "0xM1", "0xM2", "0xM3"
+AT_ONCE = [  # three notes of 40 outstanding together, then one of 40 alone
+    Entry(A, M1, 40, True, time=5, created=1),
+    Entry(A, M2, 40, True, time=5, created=2),
+    Entry(A, M3, 40, True, time=5, created=3),
+    Entry(A, M1, 40, True, time=9, created=8),
+]
+
+
+def test_promises_outstanding_together_count_for_their_total():
+    plain = weigh(AT_ONCE, A)
+    assert plain.largest_repaid == 40  # the default reading sees only the largest single promise
+    together = weigh(AT_ONCE, A, concurrent=True)
+    assert together.repaid == (((120, 1.0),),)
+    assert largest_amount_due(together.repaid, 0.1, 100, 1.0) == pytest.approx(120 / 0.9)
+
+
+def test_promises_one_after_another_do_not_add_up():
+    in_turn = [Entry(A, M1, 40, True, time=t + 1, created=t) for t in (1, 3, 5)]
+    assert weigh(in_turn, A, concurrent=True).repaid == (((40, 1.0),),)
+    undated = [Entry(A, M1, 40, True, time=5), Entry(A, M2, 40, True, time=5)]  # no `created`: nothing to add
+    assert weigh(undated, A, concurrent=True).repaid == (((40, 1.0),),)
+
+
+def test_a_total_is_only_as_credible_as_all_of_its_parts():
+    ev = weigh(AT_ONCE, A, trust={M1: 1.0, M2: 0.5, M3: 0.5}, concurrent=True)
+    assert ev.repaid == (((40, 1.0), (80, 0.5), (120, 0.25)),)
+    alone = weigh(AT_ONCE, A, trust={M1: 1.0}, concurrent=True)
+    assert alone.repaid == (((40, 1.0),),)  # payees the reader does not trust add nothing
+
+
+def test_one_counterparty_is_one_piece_of_evidence_however_many_notes():
+    notes = [Entry(A, M2, 40, True, time=5, created=1), Entry(A, M2, 40, True, time=5, created=2)]
+    ev = weigh(notes, A, trust={M2: 0.5}, concurrent=True)
+    assert ev.repaid == (((80, 0.5),),)  # not 0.25: the two are not independent
+
+
+def test_the_concurrent_reading_is_never_more_confident_about_a_single_amount():
+    # Two half-trusted counterparties each repaid 1000 at different times. Read as independent they
+    # leave a doubt of 1/4; read as one group, 1/2.
+    log = [Entry(A, M1, 1000, True, time=2, created=1), Entry(A, M2, 1000, True, time=4, created=3)]
+    trust = {M1: 0.5, M2: 0.5}
+    independent = threshold_survival(1000, weigh(log, A, trust).repaid, 100, 1.0)
+    one_group = threshold_survival(1000, weigh(log, A, trust, concurrent=True).repaid, 100, 1.0)
+    assert one_group < independent

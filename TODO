@@ -10,3 +10,16 @@
 - create docs (from sol code?), python api summary, 
 - test rain py lib
 - debug scripts 03, 04, 05.
+
+Open after the offline and fee-use experiments (2026-11-20):
+
+- identity cost: every result assumes that starting again under a new identity is expensive, and nothing models
+  what it costs (proof of personhood, a deposit, a guarantor). `rain.ladder.identity_bound` is the only handle.
+- real parameters: the threshold tail index, the shock rate and the share of opportunists are assumed, not
+  fitted. Find lending data (microfinance, the World Bank study of the Rohingya settlements) and fit them.
+- engineering: the oracle is a trusted role (UPDATER_ROLE); no audit; no testnet deployment; the
+  rework-economics and rain-posts branches are unmerged, so links in the posts to `main` are stale.
+- signed promises use an Ethereum signed message over a domain-bound hash; move to EIP-712 typed data so
+  wallets can show what is being signed.
+- offline: how a payee estimates the number of places a payer can spend between syncs; what a hub earns and
+  whether it should answer for the notes it allows; notes that can be passed on.

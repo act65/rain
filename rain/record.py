@@ -103,7 +103,7 @@ def _frontier(pairs: Iterable[Tuple[float, float]]) -> Repaid:
 def weigh(
     entries: Iterable[Entry], subject: str, trust: Trust = None, *,
     group: Optional[Callable[[str], Hashable]] = None, now: Optional[float] = None, retention: float = 1.0,
-    asset: Optional[str] = None, weight: Optional[Callable[[Entry], float]] = None,
+    asset: Optional[str] = None, weight: Optional[Callable[[Entry], float]] = None, concurrent: bool = False,
 ) -> Evidence:
     """
     The record of `subject` as a promisor, as a reader with this `trust` weighs it.
@@ -116,6 +116,14 @@ def weigh(
         (`now` defaults to the latest entry's time).
     asset: only promises in this asset.
     weight: the weight of one promise in the two counters (default 1 each; `by_fee` for the on-chain unit).
+    concurrent: also count what was owed at once. The threshold is on everything a person owes
+        at one time, so promises that were outstanding together and all kept show a threshold of
+        at least their total, if all were genuine: the total counts with the product of the
+        credences (`_concurrent`). It needs `created` on the entries. This reading gives up the
+        independence of counterparties (everything is one group), so it is never more confident
+        than the default about any single amount, and many half-trusted counterparties do not
+        add up. It is what lets a record made of several small promises at once (payments
+        accepted offline by different payees) count for its total.
     """
     subject = str(subject)
     trust_of = _trust_function(trust)
@@ -125,6 +133,7 @@ def weigh(
 
     kept = broken = 0.0
     groups: Dict[Hashable, List[Tuple[float, float]]] = {}
+    outstanding: List[Tuple[Optional[float], float, Hashable, float, float]] = []
     for e in mine:
         fade = retention ** max(0.0, now - e.time)
         w = 1.0 if weight is None else weight(e)
@@ -135,8 +144,38 @@ def weigh(
         kept += credence * w
         key = str(e.promisee) if group is None else group(str(e.promisee))
         groups.setdefault(key, []).append((float(e.amount), credence))
-    repaid = tuple(g for g in (_frontier(pairs) for pairs in groups.values()) if g)
+        outstanding.append((e.created, e.time, key, float(e.amount), credence))
+    if concurrent:
+        pairs = [pair for g in groups.values() for pair in g] + _concurrent(outstanding)
+        repaid = tuple(g for g in (_frontier(pairs),) if g)
+    else:
+        repaid = tuple(g for g in (_frontier(pairs) for pairs in groups.values()) if g)
     return Evidence(kept=kept, broken=broken, repaid=repaid)
+
+
+def _concurrent(kept: Sequence[Tuple[Optional[float], float, Hashable, float, float]]) -> List[Tuple[float, float]]:
+    """
+    Totals owed at once, as (amount, credence) pairs. `kept` holds, for each kept promise, when it
+    was made and resolved, its counterparty group, its amount and its credence.
+
+    The total owed is largest at a moment when some promise is made. At each such moment the
+    promises then outstanding are added up counterparty by counterparty (one counterparty's
+    promises are one piece of evidence, at the least of their credences), and the counterparties
+    are taken most credible first: the first k together show a threshold of at least their total
+    if all k were genuine, which has probability the product of their credences.
+    """
+    pairs: List[Tuple[float, float]] = []
+    for moment in sorted({made for made, _, _, _, _ in kept if made is not None}):
+        by_group: Dict[Hashable, Tuple[float, float]] = {}
+        for made, resolved, key, amount, credence in kept:
+            if made is not None and made <= moment < resolved and credence > 0:  # repaid, then lent again: not at once
+                total, least = by_group.get(key, (0.0, 1.0))
+                by_group[key] = (total + amount, min(least, credence))
+        total, credence = 0.0, 1.0
+        for amount, c in sorted(by_group.values(), key=lambda x: (-x[1], -x[0])):
+            total, credence = total + amount, credence * c
+            pairs.append((total, credence))
+    return pairs
 
 
 # --- The threshold belief: how large a promise would they keep? ---

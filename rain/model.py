@@ -343,6 +343,32 @@ class Economy:
         self._record_guarantee(loan, kept=False)
         loan.status = "guarantor_defaulted"
 
+    # --- offline notes (OfflineNoteScript) ---
+
+    def settle_note(self, payer: str, payee: str, amount: float, issued: Optional[float] = None,
+                    presenter: Optional[str] = None) -> bool:
+        """
+        A note signed by `payer` is presented. The presenter (the payee unless named) pays the fee.
+        If the payer has the amount and the fee they pay both and the promise is kept; otherwise it
+        is broken (the model has no grace period). `issued` is when the note was signed. Returns
+        whether it was paid.
+        """
+        presenter = payee if presenter is None else presenter
+        fee = self.quote_fee(amount)
+        self._pay(presenter, None, fee)
+        kept = self.agents[payer].money + 1e-9 >= amount + fee
+        if kept:
+            self._pay(payer, payee, amount)
+            self._pay(payer, presenter, fee)
+            self.agents[payer].fees_paid += fee
+            self.fulfil_promise(payer, fee_paid=fee)
+        else:
+            self.agents[presenter].fees_paid += fee
+            self.default_promise(payer, fee_paid=fee)
+        self.log.append(Entry(promisor=payer, promisee=payee, amount=amount, kept=kept, time=self.cycle,
+                              fee_paid=fee, created=self.cycle if issued is None else issued))
+        return kept
+
     def _record_guarantee(self, loan: Loan, kept: bool) -> None:
         self.log.append(Entry(promisor=loan.guarantor, promisee=loan.lender, amount=loan.principal + loan.interest,
                               kept=kept, time=self.cycle, fee_paid=loan.guarantor_fee, created=loan.funded_in))

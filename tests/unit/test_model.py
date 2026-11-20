@@ -302,3 +302,31 @@ def test_vesting_points_exist_but_do_not_earn_until_vested():
     e.kept_promises("old")
     e.pay_dividend()
     assert e.agents["new"].dividends_received > 0
+
+
+# --- offline notes ---
+
+def test_a_note_the_payer_can_cover_is_paid_and_the_payer_bears_the_fee():
+    e = Economy.current_rules(min_fee=0.1, fee_rate=0.01, point_price=0.04, decay_rate=0.03)
+    e.add_agent("payer", money=1000.0)
+    e.add_agent("shop", money=50.0)
+    assert e.settle_note("payer", "shop", 200.0, issued=-1)
+    assert e.agents["payer"].money == pytest.approx(1000 - 200 - 2)
+    assert e.agents["shop"].money == pytest.approx(250.0)
+    assert e.agents["payer"].reputation == pytest.approx(2 / 0.04)
+    entry = e.log[-1]
+    assert (entry.promisor, entry.promisee, entry.amount, entry.kept, entry.created) == ("payer", "shop", 200.0, True, -1)
+
+
+def test_a_double_spend_is_recorded_as_a_broken_promise_and_costs_the_payee_the_fee():
+    e = Economy.current_rules(min_fee=0.1, fee_rate=0.01, point_price=0.04, decay_rate=0.03)
+    e.add_agent("payer", money=250.0)
+    e.add_agent("shop1", money=50.0)
+    e.add_agent("shop2", money=50.0)
+    assert e.settle_note("payer", "shop1", 200.0)
+    assert not e.settle_note("payer", "shop2", 200.0)  # the same money, promised twice
+    assert e.agents["shop2"].money == pytest.approx(50 - 2)
+    assert e.agents["payer"].money == pytest.approx(250 - 202)
+    assert e.agents["payer"].broken == pytest.approx(2 / 0.04)
+    assert e.agents["payer"].delinquent
+    assert [x.kept for x in e.log] == [True, False]

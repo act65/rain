@@ -7,6 +7,7 @@ import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "@openzeppelin/contracts/access/AccessControl.sol";
 import "@openzeppelin/contracts/utils/Counters.sol";
 import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
+import "@openzeppelin/contracts/utils/cryptography/ECDSA.sol";
 
 interface IERC721 {
     function transferFrom(address from, address to, uint256 tokenId) external;
@@ -26,6 +27,11 @@ interface IERC721 {
  *     user authorized that script (`setScriptAuthorization`);
  *   - a script can only move a user's tokens up to the allowance the user gave that
  *     script for that asset (`approveScript`, `setScriptNftApproval`).
+ *
+ * A signature is also consent. A promise that the promisor signed for a particular script
+ * (`monitoredSignedPromise`) can be recorded by that script without any on-chain
+ * authorization, and the promisor cannot withdraw it once it is signed. This is what lets
+ * a promise be made while disconnected and recorded later, by whoever carries it.
  *
  * The protocol fee is charged per promise, to the promisor, and is proportional to
  * the amount promised (with a minimum). The fee paid is recorded with the promise:
@@ -60,6 +66,23 @@ contract CalculusEngine is AccessControl, ReentrancyGuard {
         uint256 feePaid;
     }
 
+    /**
+     * A promise as its promisor signs it, possibly while disconnected. It is bound to one
+     * script, one engine and one chain by `signedPromiseDigest`.
+     */
+    struct SignedPromise {
+        address promisor;
+        address promisee;
+        address asset;
+        uint256 amount;
+        uint256 issuedAt;     // when the promisor says they signed it
+        uint256 validUntil;   // it can be recorded up to this time, and not after
+        uint256 settleWithin; // seconds the promisor has to keep it, counted from when it is recorded
+        uint256 nonce;        // chosen by the promisor; each (promisor, nonce) is recorded at most once
+    }
+
+    bytes32 public constant SIGNED_PROMISE_TAG = keccak256("Rain signed promise");
+
     struct Action {
         address user; // The end-user on whose behalf the session was opened
         address script; // The script contract that orchestrates the session
@@ -67,6 +90,9 @@ contract CalculusEngine is AccessControl, ReentrancyGuard {
 
     mapping(uint256 => Promise) public promises;
     mapping(uint256 => Action) public actions;
+
+    // promisor => nonce => has a signed promise with this nonce been recorded?
+    mapping(address => mapping(uint256 => bool)) public signedPromiseUsed;
 
     // --- User -> script permissions ---
     // user => script => may the script open actions / make promises in the user's name?
@@ -79,6 +105,7 @@ contract CalculusEngine is AccessControl, ReentrancyGuard {
     // --- Events ---
     event ActionCreated(uint256 indexed actionId, address indexed user, address indexed script);
     event PromiseCreated(uint256 indexed promiseId, uint256 indexed actionId, address indexed promisor);
+    event SignedPromiseRecorded(uint256 indexed promiseId, address indexed promisor, uint256 nonce, uint256 issuedAt, address feePayer);
     event PromiseFulfilled(uint256 indexed promiseId);
     event PromiseDefaulted(uint256 indexed promiseId);
     event ValueTransferred(uint256 indexed actionId, address indexed asset, address indexed from, address to, uint256 amount);
@@ -176,13 +203,59 @@ contract CalculusEngine is AccessControl, ReentrancyGuard {
         uint256 amount,
         uint256 deadline
     ) external nonReentrant onlyActionScript(actionId) returns (uint256) {
-        require(promisor != promisee, "CalculusEngine: Cannot promise to yourself");
         require(_authorized(promisor, msg.sender), "CalculusEngine: Script not authorized by promisor");
+        return _recordPromise(actionId, promisor, promisee, asset, amount, deadline, promisor);
+    }
+
+    /**
+     * @notice What a promisor signs (as an Ethereum signed message) to make `p` through `script`.
+     */
+    function signedPromiseDigest(address script, SignedPromise calldata p) public view returns (bytes32) {
+        return keccak256(abi.encode(SIGNED_PROMISE_TAG, block.chainid, address(this), script, p));
+    }
+
+    /**
+     * @notice Records a promise that its promisor signed, without their on-chain authorization.
+     * @dev The signature is the consent, and it names the calling script. The fee is charged to
+     * `feePayer`, who must have given the script an allowance for it: a promisor who has emptied
+     * their account or withdrawn their allowances cannot stop the promise being recorded, or
+     * recorded as broken. The deadline is `settleWithin` after the time of recording.
+     */
+    function monitoredSignedPromise(
+        uint256 actionId,
+        SignedPromise calldata p,
+        bytes calldata signature,
+        address feePayer
+    ) external nonReentrant onlyActionScript(actionId) returns (uint256) {
+        require(block.timestamp <= p.validUntil, "CalculusEngine: Signed promise has expired");
+        require(p.issuedAt <= block.timestamp, "CalculusEngine: Signed promise is dated in the future");
+        require(!signedPromiseUsed[p.promisor][p.nonce], "CalculusEngine: Signed promise already recorded");
+        bytes32 digest = ECDSA.toEthSignedMessageHash(signedPromiseDigest(msg.sender, p));
+        require(ECDSA.recover(digest, signature) == p.promisor, "CalculusEngine: Not signed by the promisor");
+
+        signedPromiseUsed[p.promisor][p.nonce] = true;
+        uint256 promiseId = _recordPromise(
+            actionId, p.promisor, p.promisee, p.asset, p.amount, block.timestamp + p.settleWithin, feePayer
+        );
+        emit SignedPromiseRecorded(promiseId, p.promisor, p.nonce, p.issuedAt, feePayer);
+        return promiseId;
+    }
+
+    function _recordPromise(
+        uint256 actionId,
+        address promisor,
+        address promisee,
+        address asset,
+        uint256 amount,
+        uint256 deadline,
+        address feePayer
+    ) internal returns (uint256) {
+        require(promisor != promisee, "CalculusEngine: Cannot promise to yourself");
 
         uint256 fee = quoteFee(asset, amount);
         if (fee > 0) {
-            _spendScriptAllowance(promisor, address(usdcToken), fee);
-            usdcToken.safeTransferFrom(promisor, treasuryAddress, fee);
+            _spendScriptAllowance(feePayer, address(usdcToken), fee);
+            usdcToken.safeTransferFrom(feePayer, treasuryAddress, fee);
         }
 
         _promiseIdCounter.increment();
