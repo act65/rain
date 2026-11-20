@@ -56,7 +56,7 @@ Installed as a local package. The core logic is pure Python and needs no chain.
 
 ### Experiments (`experiments/`)
 
-Experiments on the protocol's economics, each with predictions written before it was run and the outcome recorded after. Start with `experiments/README.md`.
+Experiments on the protocol's economics, each with predictions written before it was run and the outcome recorded after. Start with `experiments/README.md`. `notes/testing-the-protocol.md` is the account of what they found, in one place: what the protocol aims for and how each aim was tested. It is generated, with every number read from the result files, by `experiments/blog/make_assets.py` from `experiments/blog/testing-the-protocol.md`.
 
 ### Simulation & Management Scripts (`scripts/`)
 

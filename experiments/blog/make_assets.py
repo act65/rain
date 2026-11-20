@@ -18,6 +18,7 @@ import matplotlib
 
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
+import matplotlib.ticker
 
 from rain import ladder
 from rain.model import Economy
@@ -263,6 +264,169 @@ def diagram_cycle(out):
     save(fig, out, "rain-fees-and-reputation.svg")
 
 
+def diagram_guarantee(out):
+    fig, ax = canvas(7.8, 2.9, 100, 38)
+    grey = "#f3f2ee"
+    box(ax, 2, 12, 20, 11, "Borrower", "no record yet", colour=MUTED, fill=grey)
+    box(ax, 40, 12, 20, 11, "Guarantor", "has a record", colour=ORANGE, fill="#fdeee7")
+    box(ax, 78, 12, 20, 11, "Lender", colour=MUTED, fill=grey)
+    arrow(ax, (22, 17.5), (40, 17.5), "promise 1:\nI will repay", at=(31, 23.5))
+    arrow(ax, (60, 17.5), (78, 17.5), "promise 2: if they\ndo not, I will", at=(69, 23.5))
+    arrow(ax, (88, 12), (12, 12), "the principal", at=(50, 3.5), rad=-0.22)
+    ax.text(50, 35, "The lender relies on the guarantor's record. The guarantor bears the cost of being wrong about the borrower.",
+            ha="center", va="center", color=MUTED, fontsize=8.5)
+    save(fig, out, "rain-guarantee.svg")
+
+
+def diagram_offline(out):
+    fig, ax = canvas(7.8, 4.3, 117, 62)
+    grey, warm_fill, green_fill = "#f3f2ee", "#fdeee7", "#e6f6f0"
+    ax.plot([57, 57], [3, 52], color=GRID, linewidth=1.2, linestyle=(0, (4, 4)))
+    ax.text(27, 58, "NO CONNECTION", ha="center", va="center", color=MUTED, fontsize=9)
+    ax.text(85, 58, "THE CHAIN", ha="center", va="center", color=MUTED, fontsize=9)
+    box(ax, 1, 23, 17, 11, "Payer", "holds 60", colour=MUTED, fill=grey)
+    box(ax, 30, 40, 16, 10, "Shop A", colour=MUTED, fill=grey)
+    box(ax, 30, 7, 16, 10, "Shop B", colour=MUTED, fill=grey)
+    box(ax, 50, 23, 14, 11, "Carrier", "anyone", colour=MUTED, fill=grey)
+    box(ax, 70, 23, 16, 11, "Promise log", "CalculusEngine")
+    box(ax, 90, 40, 25, 10, "Note A: paid", "the money was there", colour=AQUA, fill=green_fill)
+    box(ax, 90, 7, 25, 10, "Note B: broken", "unpaid at its deadline", colour=ORANGE, fill=warm_fill)
+    arrow(ax, (14, 34), (30, 44), "signs a note\nfor 50", at=(17, 42.5))
+    arrow(ax, (14, 23), (30, 13), "signs a note\nfor 50", at=(17, 14.5))
+    arrow(ax, (46, 43), (54, 34))
+    arrow(ax, (46, 14), (54, 23))
+    arrow(ax, (64, 28.5), (70, 28.5))
+    ax.text(67, 37, "presents\nboth notes", ha="center", va="center", color=INK, fontsize=8.5)
+    arrow(ax, (82, 34), (95, 40))
+    arrow(ax, (82, 23), (95, 17))
+    ax.text(103, 28.5, "Shop B holds a claim;\nthe payer's record\nshows the default", ha="center", va="center", color=INK, fontsize=8.5)
+    save(fig, out, "rain-offline.svg")
+
+
+# --- charts for the belief post: what a record says about size ---
+
+BELIEF = dict(floor=100.0, tail_index=1.0, shock_rate=0.02)
+RISK = 0.10
+
+
+def _belief_axes(ax, lo, hi):
+    ax.set_xscale("log")
+    ax.set_xlim(lo, hi)
+    ax.set_ylim(0, 1.02)
+    ax.axhline(1 - RISK, color=MUTED, linewidth=1, linestyle=(0, (2, 3)))
+    ax.text(hi * 0.94, 1 - RISK + 0.025, "a 10% risk of default", color=MUTED, fontsize=9, ha="right")
+    ax.set_xlabel("amount due")
+    ax.set_ylabel("chance it is repaid")
+    ax.xaxis.set_major_formatter(matplotlib.ticker.FuncFormatter(lambda v, _: f"{v:,.0f}"))
+
+
+def belief_by_size(out):
+    import numpy as np
+    from rain.record import largest_amount_due, repay_probability
+    xs = np.logspace(np.log10(50), np.log10(20_000), 400)
+    fig, ax = figure(4.6)
+    for label, colour, repaid in (("a stranger", BLUE, ()), ("someone who has repaid 1,000", ORANGE, (((1_000.0, 1.0),),))):
+        ax.plot(xs, [repay_probability(x, repaid, **BELIEF) for x in xs], color=colour, label=label)
+        limit = largest_amount_due(repaid, RISK, **BELIEF)
+        ax.plot([limit], [1 - RISK], marker="o", markersize=8, markerfacecolor=SURFACE, markeredgecolor=colour, markeredgewidth=2, linestyle="none")
+        ax.annotate(f"limit {limit:,.0f}", (limit, 1 - RISK), xytext=(8, 10), textcoords="offset points", color=INK, fontsize=10)
+    _belief_axes(ax, 50, 20_000)
+    ax.set_title("A repayment moves the limit to just above the amount repaid", loc="left", color=INK, fontsize=12)
+    ax.legend(loc="upper center", ncol=2, fontsize=9, bbox_to_anchor=(0.5, -0.18))
+    save(fig, out, "belief-by-size.svg")
+
+
+def belief_by_trust(out):
+    import numpy as np
+    from rain.record import repay_probability
+    xs = np.logspace(np.log10(50), np.log10(50_000), 500)
+    fig, ax = figure(4.8)
+    ax.plot(xs, [repay_probability(x, (), **BELIEF) for x in xs], color=MUTED, linewidth=1.5, linestyle=(0, (5, 3)), label="no record (a stranger)")
+    for trust, colour in ((0.9, YELLOW), (0.99, AQUA), (0.999, ORANGE), (1.0, BLUE)):
+        label = "trusts the counterparty fully" if trust == 1.0 else f"trusts the counterparty at {100 * trust:g}%"
+        ax.plot(xs, [repay_probability(x, (((10_000.0, trust),),), **BELIEF) for x in xs], color=colour, label=label)
+    _belief_axes(ax, 50, 50_000)
+    ax.set_title("A record of 10,000 repaid, as four readers see it", loc="left", color=INK, fontsize=12)
+    ax.legend(loc="upper center", ncol=2, fontsize=9, bbox_to_anchor=(0.5, -0.18))
+    save(fig, out, "belief-by-trust.svg")
+
+
+def offline_exposure(out):
+    off = results("offline")
+    evidence, limit, places = (off["parameters"][k] for k in ("evidence", "limit", "places"))
+    shock = off["parameters"]["belief"]["shock_rate"]
+    fig, ax = figure(4.4)
+    ns = list(range(1, 11))
+    for prefix, colour, label, each in (("A", BLUE, "each shop accepts the whole limit", limit),
+                                        ("B", ORANGE, f"each accepts the limit divided by {places}", limit / places)):
+        ax.plot(ns, [100 * (1 - (1 - shock) * min(1.0, evidence / (each * n))) for n in ns], color=colour, label=label)
+        rows = next(rows for name, rows in off["exposure"].items() if name.startswith(prefix))
+        ax.plot([r["payees"] for r in rows], [100 * r["default_rate"] for r in rows], marker="o", markersize=6, color=colour, linestyle="none")
+    ax.axhline(10, color=MUTED, linewidth=1, linestyle=(0, (2, 3)))
+    ax.text(6.3, 13, "the 10% the shops meant to accept", color=MUTED, fontsize=9)
+    ax.set_xlim(0.7, 10.3)
+    ax.set_ylim(0, 100)
+    ax.set_xticks(ns)
+    ax.yaxis.set_major_formatter(matplotlib.ticker.FuncFormatter(lambda v, _: f"{v:.0f}%"))
+    ax.set_xlabel("shops the payer visits between syncs (dots: simulated payers)")
+    ax.set_ylabel("payers who default")
+    ax.set_title("Offline, exposure multiplies with the number of shops", loc="left", color=INK, fontsize=12)
+    ax.legend(loc="upper center", ncol=2, fontsize=9, bbox_to_anchor=(0.5, -0.2))
+    save(fig, out, "offline-exposure.svg")
+
+
+def graduation_path(out):
+    new = results("graduation")["newcomer"]
+    offers = new["with_guarantor"]["offers"]
+    done = new["with_guarantor"]["cycles_to_graduate"]
+    fig, ax = figure(4.4)
+    loans = list(range(1, len(offers) + 1))
+    ax.plot(loans, offers, color=BLUE)
+    ax.axhline(10_000, color=MUTED, linewidth=1, linestyle=(0, (2, 3)))
+    ax.text(1.5, 10_250, "the loan they need", color=MUTED, fontsize=9)
+    ax.annotate(f"no guarantor needed\nfrom loan {done}", (done, 10_000), xytext=(14, -36), textcoords="offset points", ha="left", color=INK, fontsize=10)
+    ax.set_xlim(1, len(offers))
+    ax.set_ylim(0, 11_000)
+    ax.yaxis.set_major_formatter(matplotlib.ticker.FuncFormatter(lambda v, _: f"{v:,.0f}"))
+    ax.set_xlabel("loan number")
+    ax.set_ylabel("credit offered with no guarantee")
+    ax.set_title("A newcomer borrowing 10,000 a cycle under a guarantee outgrows it", loc="left", color=INK, fontsize=12)
+    save(fig, out, "graduation.svg")
+
+
+# --- the note in the repository ---
+
+BLOG = "https://act65.github.io"
+
+
+def render_note(numbers_by_key, out):
+    """
+    Writes notes/testing-the-protocol.md from experiments/blog/testing-the-protocol.md, with every
+    number filled in from the result files and its figures copied to notes/figures/.
+    """
+    import re
+    import shutil
+    text = (ROOT / "blog" / "testing-the-protocol.md").read_text()
+    _, front, body = text.split("---\n", 2)
+    title = re.search(r"^title: (.*)$", front, re.M).group(1)
+    subtitle = re.search(r"^subtitle: (.*)$", front, re.M).group(1)
+    body = re.sub(r"\{% assign [^%]*%\}\n\n?", "", body)
+    body = re.sub(r"\{\{ n\.(\w+) \}\}", lambda m: numbers_by_key[m.group(1)], body)
+    figures = sorted(set(re.findall(r"\{\{ site\.baseurl \}\}/assets/rain/([\w.-]+)", body)))
+    body = body.replace("{{ site.baseurl }}/assets/rain/", "figures/")
+    body = body.replace("https://github.com/act65/rain/tree/main/experiments", "../experiments")
+    body = body.replace("{{ site.baseurl }}", BLOG)
+    assert "{{" not in body and "{%" not in body, "unrendered template tag"
+    notes = ROOT.parent / "notes"
+    (notes / "figures").mkdir(exist_ok=True)
+    for name in figures:
+        shutil.copyfile(out / name, notes / "figures" / name)
+    header = (f"# {title}\n\n*{subtitle}.*\n\n"
+              "<!-- Generated by experiments/blog/make_assets.py from experiments/blog/testing-the-protocol.md. "
+              "Edit that file, not this one. -->\n")
+    (notes / "testing-the-protocol.md").write_text(header + body)
+
+
 # --- numbers ---
 
 def fmt(x, digits=2):
@@ -494,6 +658,8 @@ def numbers(keeper, peaks):
     # the ladder's bounds (i = r = 5%, surplus 3%; risk 10%, shocks 2%, tail index 1)
     n["k_screen"] = fmt(ladder.screening_growth_factor(0.10, 1.0, 0.02), 3)
     n["k_stay"] = fmt(ladder.incentive_growth_factor(0.05, 0.03, 0.05), 3)
+    n["size_example_limit"] = fmt(1_000 * ladder.screening_growth_factor(0.10, 1.0, 0.02), 0)
+    n["size_example_double"] = pct(0.98 / 2)
     n["doubling_risk"] = pct(1 - 0.98 / 2)
     return n
 
@@ -508,14 +674,23 @@ def main():
     diagram_pieces(out)
     diagram_loan(out)
     diagram_cycle(out)
+    diagram_guarantee(out)
+    diagram_offline(out)
+    belief_by_size(out)
+    belief_by_trust(out)
+    offline_exposure(out)
+    graduation_path(out)
     stamp = run_provenance()
     lines = ["# Generated by experiments/blog/make_assets.py in the rain repository. Do not edit by hand.",
              f"# Source commit {stamp['commit_short']} (dirty: {stamp['dirty']}), {stamp['utc']}.",
              f"commit: \"{stamp['commit_short']}\""]
-    lines += [f"{key}: \"{value}\"" for key, value in numbers(keeper, peaks).items()]
+    n = numbers(keeper, peaks)
+    lines += [f"{key}: \"{value}\"" for key, value in n.items()]
     # Tallied by hand on 2026-11-20 from the outcome tables in the twenty experiment READMEs.
-    lines += ['predictions_total: "126"', 'predictions_held: "93"', 'predictions_partly: "22"', 'predictions_wrong: "11"']
+    tally = dict(predictions_total="126", predictions_held="93", predictions_partly="22", predictions_wrong="11", experiments_count="20")
+    lines += [f'{key}: "{value}"' for key, value in tally.items()]
     (out / "rain.yml").write_text("\n".join(lines) + "\n")
+    render_note({**n, **tally, "commit": stamp["commit_short"]}, out)
     print("\n".join(lines))
 
 
