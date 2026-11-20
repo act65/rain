@@ -28,7 +28,7 @@ Three layers, each checking the one above it.
 - **A model of the protocol's accounting** in plain Python, with no blockchain. One scenario (a repayment, a default, a reward lost to delinquency, decay, a settlement, two rounds of fee payouts) is replayed through both the contracts and the model, and they must agree to nine decimal places. The model is what makes large simulations cheap.
 - **Experiments** run on the model. Where a result can be worked out on paper it is, and the simulation is an independent check of the formula.
 
-Each experiment's predictions were written down, with numbers, before it was run. Each has a control that must fail: for example, with worthless reputation every loan should be defaulted on, and it is. Of 132 predictions, 99 held, 22 held in part, and 11 were wrong. Several of the wrong ones are the most useful results below.
+Each experiment's predictions were written down, with numbers, before it was run. Each has a control that must fail: for example, with worthless reputation every loan should be defaulted on, and it is. Of 137 predictions, 103 held, 23 held in part, and 11 were wrong. Several of the wrong ones are the most useful results below.
 
 ## Aim 2 first: a stable value needs an anchor
 
@@ -174,6 +174,7 @@ A shop accepting a note is a lender, so it reads the payer's record and has a li
 - If notes are carried to the chain and shops sync from it, the take does not depend on the market's size. It is the number of shops the attacker reaches while the news gets to the chain and back: 2.9 limits when carrying a note takes five visits and a shop syncs every five.
 - Speed is the parameter. An attacker with ten helpers is ten times faster and takes 21 limits. What a reward for carrying notes buys is a shorter delay.
 - Shops that refuse everyone while their own sync is more than two visits old cap the take at 2.4 limits whatever the attacker does, and are willing to deal 33% of the time. That setting is a dial between staying available and staying consistent.
+- **Locked funds.** A payer can lock an amount before going offline and carry a certificate of it. Notes within the amount are then certain to be paid, so a shop needs no belief about the payer, and notes that exceed it prove the overspend to anyone, from the notes alone. This does not change the race: the attacker gets 2.9 allowances accepted, as before. It takes one allowance off what shops lose (1.9 against 2.9). And a further deposit, forfeited to whoever presents the proof, deters overspending when it exceeds what the attacker can get accepted beyond the allowance: with a deposit of two allowances an attacker alone ends 0.09 allowances down, while one with ten helpers and a deposit of five is still 15 up.
 
 The design this points to for a market without a connection is a hub that answers for the notes it allows, which is the guarantor above in another role. It has not been built.
 
@@ -218,4 +219,4 @@ uv run python experiments/standing_value/run.py      # any experiment; each writ
 uv run python experiments/blog/make_assets.py out/   # the charts and every number quoted here
 ```
 
-Every number in this note is read from a file that the last command generates (commit `ffff09c`).
+Every number in this note is read from a file that the last command generates (commit `e3bea1d`).
