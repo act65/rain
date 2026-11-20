@@ -23,3 +23,7 @@ Open after the offline and fee-use experiments (2026-11-20):
   wallets can show what is being signed.
 - offline: how a payee estimates the number of places a payer can spend between syncs; what a hub earns and
   whether it should answer for the notes it allows; notes that can be passed on.
+- governance: a DAO to hold the parameters, the identity registry and the oracle. The oracle's rule is a pure
+  function of the log (`rain.reputation`), so make its updates challengeable (post, wait, anyone who recomputes a
+  different result disputes) instead of trusted. Open: what voting weight is (reputation costs fees and fades, so
+  it is a candidate, but it favours whoever transacts most), and how a DAO decides one person, one identity.
