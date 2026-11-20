@@ -71,3 +71,50 @@ dividend's job could be done after all); or rule 1 failing the control.
 One fee rate. The honest economy is in a steady state. Rules are not combined beyond rule 5. What the work is
 worth (whether carriers would carry notes for half the fee) is not modelled. Rule 4 has no gatekeeper on
 claims; one that a ring cannot pass would need the trust that `collusion/` shows is the scarce thing.
+
+## Outcome (2026-11-20)
+
+Numbers are in `results/SUMMARY.md`. The control held: under the current rules a wash costs 0.6250% in the
+model of the contracts and the safe trust is 3.32%. Only rules 1 and 7 run through the model; the others are
+not implemented in it, and their rows are the formulas evaluated.
+
+| prediction | outcome |
+|---|---|
+| 1. control: 0.625%, safe trust 3.3% | Held. |
+| 2. burn: 1%, safe trust 5.3% | Held: 5.25%. |
+| 3. counterparty: a wash is free, safe trust zero | Held. |
+| 4. insurance is drained: a ring with ten times the honest claims takes 91% of the pool | Held: 90.9%, and honest promisees recover 5.5% of their losses where they recovered 50%. I misstated the break-even: the ring profits while claims are paid at more than 2% of the cover promised, which is 1% of face. |
+| 5. work at a 50% share: 0.3125% if the ring presents its own promises, 0.8125% if it cannot | Held: safe trust 1.67% and 4.29%. |
+| 6. per identity: ten identities for each honest one take 91% | Held. |
+| 7. no rule makes faking dearer than honest use | Held in all seven. Under rule 3 a wash is cheaper than an honest promise by the whole fee. |
+| 8. forfeiting the dividend takes 3.4% of the amount due | **The number was wrong: 3.06%** (model and formula agree). I counted the fee on the loan being defaulted on, which earns nothing. Outside the 5% I allowed. The substance holds: it is small against the loan. |
+
+What this shows:
+
+- **The fee has two jobs that pull against each other.** A record should cost something to make, which wants
+  the fee not to come back. Honest use should be cheap, which wants it to. No rule separates them, because a
+  payout is computed from the log and on the log a wash and a kept promise are the same thing.
+- **So every unit returned to honest users is returned to rings.** The rules differ only in how much comes
+  back (nothing under burning, 37.5% under the dividend, everything under a counterparty rebate) and in
+  whether someone who makes no promises at all can take it (insurance claims, identities).
+- **Three rules are out.** Paying the counterparty makes a record free. Paying claims or identities pays
+  whoever can manufacture claims or identities, and both are free to manufacture.
+- **Paying for work is a fee cut for whoever can do the work themselves.** A ring presents its own promises.
+  A share for presenters is safe only where the payer cannot be the presenter, and the protocol cannot tell.
+  A carrier is better paid by the parties to the note, in the script.
+- **The dividend's job, stated correctly.** The revenue has to go somewhere. A recipient outside the system
+  collects a rent on every promise, washes included. Returning it to payers on demand makes the fee no cost at
+  all. The reputation dividend returns it to the people who paid, slowly, in proportion to promises kept, and
+  in a way that cannot return more than was paid (the fund holds 0.04 per point). It lowers the safe trust from
+  5.25% to 3.32%, and neither figure is enough to help an honest borrower with a record elsewhere
+  (`collusion/` part E), so little is lost.
+- **It does not deter default and should not be described as doing so.** Forfeiting it would add 3% of the
+  amount due to the cost of defaulting.
+
+Decision: keep the dividend. Change what the documentation says it is for: the least harmful way to give the
+revenue back. Do not add a protocol payment for carriers or an insurance pool.
+
+Not examined: lowering the fee and burning it (a 0.625% fee burned costs a wash the same as a 1% fee with the
+dividend, with no Treasury, no payout fund and nothing for a patient ring to recover, `patient_ring/`; but it
+destroys the revenue). That comparison turns on what the destroyed revenue is worth to users, which is a
+preference, not a computation.

@@ -12,14 +12,15 @@ This implementation focuses on the **smart contract architecture, off-chain supp
 
 A *promise* is a recorded commitment by one user to another (an amount, an asset, a deadline). Anyone can write a *script*, a contract that records promises and moves value on behalf of users who authorized it. Reputation is what a user earns by keeping promises.
 
-1.  **`CalculusEngine.sol`**: the log of promises and transfers. Scripts are permissionless; a script can only act for users who authorized it, within the allowances they gave it. Every promise pays a fee to the Treasury: a percentage of the amount promised, with a minimum.
+1.  **`CalculusEngine.sol`**: the log of promises and transfers. Scripts are permissionless; a script can only act for users who authorized it, within the allowances they gave it. Every promise pays a fee to the Treasury: a percentage of the amount promised, with a minimum. A promise can also be made by signature (`monitoredSignedPromise`): the promisor signs it, possibly with no connection, and a script records it later. The signature is the consent, and it cannot be withdrawn.
 2.  **`RainReputation.sol`**: the identity token (non-transferable) and the reputation ledger. A new identity has no reputation. Reputation decays by a fixed fraction each period. It can be bonded: a script holds the bond and either returns it or, on default, destroys it. Beside it each account has a broken-promise counter in the same unit, fading at the same rate. The two are the evidence for a belief about the account: `reliability(user, priorKept, priorBroken)` gives the estimated chance that their next promise is kept, for a reader with that prior.
 3.  **Off-chain oracle and `ReputationUpdater.sol`**: the oracle reads the promise log and credits each kept promise with `fee paid / point price` reputation, so reputation has a fixed price and is a record of fees paid on kept promises. A broken promise adds the same weight to its promisor's broken-promise counter; it takes no reputation (the bond does that). Each update is applied at most once.
 4.  **`ReputationClaimToken.sol` (RCT)**: a transferable claim on a defaulted promise, minted to the person it was owed to. While someone has claims outstanding against them they are *delinquent*: they cannot borrow or earn reputation.
-5.  **`Treasury.sol`**: pays the fees out to reputation holders as a dividend (a Merkle drop). Every fee goes into a payout fund, and each cycle shares out a fixed fraction of it: the reputation decay rate, which the Treasury reads from the reputation contract. In steady state that is what comes in; when fee income changes, dividends follow gradually, at the speed the supply of reputation does.
+5.  **`Treasury.sol`**: pays the fees out to reputation holders as a dividend (a Merkle drop). The dividend is how the revenue is given back to the people who paid it, without the fee becoming refundable; it is not what deters default (`experiments/fee_use/`). Every fee goes into a payout fund, and each cycle shares out a fixed fraction of it: the reputation decay rate, which the Treasury reads from the reputation contract. In steady state that is what comes in; when fee income changes, dividends follow gradually, at the speed the supply of reputation does.
 6.  **`LoanScript.sol`**: a reference script, a fixed-term loan secured by a reputation bond.
 7.  **`GuaranteedLoanScript.sol`**: a second reference script, a loan that a guarantor answers for (vouching). It is two promises, borrower to guarantor and guarantor to lender, so a newcomer can borrow on the standing of someone the lender already knows (see `experiments/vouching/`).
-8.  **`CurrencyToken.sol` (DMD)**: a mintable ERC-20 standing in for a stablecoin.
+8.  **`OfflineNoteScript.sol`**: a third reference script, a payment made while disconnected. The payer signs a note; whoever reaches the chain presents it. A note the payer cannot cover is recorded all the same and, unpaid at its deadline, is a broken promise: a double spend is not prevented, it is put on the payer's record (see `experiments/offline/`).
+9.  **`CurrencyToken.sol` (DMD)**: a mintable ERC-20 standing in for a stablecoin.
 
 Why the rules are what they are (a fixed price per point, decay, fees paid out, no starting reputation) is recorded in `experiments/`, and the reasoning about what reputation should mean in `notes/bayesian-reputation.md`.
 
@@ -36,7 +37,7 @@ Why the rules are what they are (a fixed price per point, decay, fees paid out, 
 
 *   `contracts/token/`: `CurrencyToken.sol`, `RainReputation.sol`, `ReputationClaimToken.sol`
 *   `contracts/primitives/`: `CalculusEngine.sol`, `ReputationUpdater.sol`, `Treasury.sol`
-*   `contracts/scripts/`: `LoanScript.sol`, `GuaranteedLoanScript.sol`
+*   `contracts/scripts/`: `LoanScript.sol`, `GuaranteedLoanScript.sol`, `OfflineNoteScript.sol`
 *   `contracts/test/`: `MockDecaySchedule.sol`, a stand-in used only by the tests
 
 ### Off-Chain Python Library (`rain/`)
@@ -45,6 +46,7 @@ Installed as a local package. The core logic is pure Python and needs no chain.
 
 *   `reputation.py`: the oracle's rules (promise log to reputation changes).
 *   `record.py`: a reader's library. It turns the promise log into one reader's belief about one person, weighing each kept promise by the reader's trust in the counterparty (see `experiments/collusion/`). It also gives the unsecured credit a record supports for a reader who trusts nobody: what the record cost in fees (`graduated_credit`, see `experiments/graduation/`).
+*   `offline.py`: the client side of a signed note (the digest is computed with no call to the chain), what a payee should accept from a payer it cannot check (`split_limit`), and a reader for notes.
 *   `dividends.py`, `merkletree.py`: dividend shares and the Merkle drop.
 *   `model.py`: a pure-Python model of the protocol's accounting, for simulations (checked against the contracts in `tests/test_model_vs_contracts.py`).
 *   `economics.py`: closed forms (what a point is worth, when default pays, the steady state).
@@ -63,7 +65,8 @@ These Python scripts, run with `ape run <name>`, manage the protocol and simulat
 2.  **`simulate_loan.py`**: Simulates loan origination, repayment, and default scenarios, showcasing the impact on reputation.
 3.  **`run_reputation_oracle.py`**: Simulates the off-chain oracle calculating and submitting reputation updates to `ReputationUpdater.sol`. (This script may use `oracle_state.json` to manage its state).
 4.  **`run_dividend_distribution.py`**: Runs a dividend cycle: the fees collected are split pro rata to reputation and claimed through Merkle proofs.
-5.  **`run_simulation.py`**: Runs the whole sequence in one session: deploy, loans on a ladder (repaid, reputation earned, a default, its resolution), reputation oracle, dividend distribution. This is the quickest way to see everything work: `uv run ape run run_simulation`.
+5.  **`simulate_offline.py`**: on its own (`uv run ape run simulate_offline`): two notes signed offline for more than the payer holds, presented by a carrier; one is paid, the other becomes a broken promise.
+6.  **`run_simulation.py`**: Runs the whole sequence in one session: deploy, loans on a ladder (repaid, reputation earned, a default, its resolution), reputation oracle, dividend distribution. This is the quickest way to see everything work: `uv run ape run run_simulation`.
 
 ### Tests (`tests/`)
 

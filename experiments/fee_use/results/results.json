@@ -1,0 +1,127 @@
+{
+ "provenance": {
+  "utc": "2026-11-20T06:25:34+00:00",
+  "commit": "c96370a950b7a669f359ae48d8ea516d9544dde8",
+  "commit_short": "c96370a",
+  "dirty": false,
+  "dirty_paths": "not recorded (stamp passed through the environment)",
+  "branch": null,
+  "python": "3.12.3",
+  "host": "devbox.europe-west4-a.c.dev-compute-d7766860.internal"
+ },
+ "parameters": {
+  "fee_rate": 0.01,
+  "r": 0.05,
+  "decay": 0.03,
+  "dividend_share": 0.375,
+  "cover": 0.5,
+  "work_share": 0.5,
+  "honest_volume": 1000000.0,
+  "honest_default_share": 0.02
+ },
+ "rules": {
+  "1. dividend (current)": {
+   "wash_cost": 0.00625,
+   "honest_cost": 0.00625,
+   "safe_trust": 0.033150051496249944
+  },
+  "2. burn": {
+   "wash_cost": 0.01,
+   "honest_cost": 0.01,
+   "safe_trust": 0.052485983202586795
+  },
+  "3. counterparty": {
+   "wash_cost": 0.0,
+   "honest_cost": 0.01,
+   "safe_trust": 0.0
+  },
+  "4. insurance": {
+   "wash_cost": 0.01,
+   "honest_cost": 0.01,
+   "safe_trust": 0.052485983202586795
+  },
+  "5. work, presented by the payer": {
+   "wash_cost": 0.003125,
+   "honest_cost": 0.003125,
+   "safe_trust": 0.01670253112251885
+  },
+  "5. work, presented by someone else": {
+   "wash_cost": 0.008125,
+   "honest_cost": 0.008125,
+   "safe_trust": 0.04288442341157861
+  },
+  "6. per identity": {
+   "wash_cost": 0.009998000399920017,
+   "honest_cost": 0.009999000099990002,
+   "safe_trust": 0.052485161674667324
+  },
+  "7. forfeitable dividend": {
+   "wash_cost": 0.00625,
+   "honest_cost": 0.00625,
+   "safe_trust": 0.033150051496249944
+  }
+ },
+ "control_wash_cost_simulated": 0.006250000000003548,
+ "insurance": [
+  {
+   "fake_ratio": 0.0,
+   "pool": 10000.0,
+   "share_of_claims_paid": 1.0,
+   "ring_fee": 0.0,
+   "ring_receives": 0.0,
+   "ring_profit": 0.0,
+   "ring_share_of_pool": 0.0,
+   "honest_recover_share_of_loss": 0.5
+  },
+  {
+   "fake_ratio": 1.0,
+   "pool": 10200.0,
+   "share_of_claims_paid": 0.51,
+   "ring_fee": 200.0,
+   "ring_receives": 5100.0,
+   "ring_profit": 4900.0,
+   "ring_share_of_pool": 0.5,
+   "honest_recover_share_of_loss": 0.255
+  },
+  {
+   "fake_ratio": 10.0,
+   "pool": 12000.0,
+   "share_of_claims_paid": 0.10909090909090909,
+   "ring_fee": 2000.0,
+   "ring_receives": 10909.090909090908,
+   "ring_profit": 8909.090909090908,
+   "ring_share_of_pool": 0.9090909090909091,
+   "honest_recover_share_of_loss": 0.05454545454545454
+  },
+  {
+   "fake_ratio": 100.0,
+   "pool": 30000.0,
+   "share_of_claims_paid": 0.0297029702970297,
+   "ring_fee": 20000.0,
+   "ring_receives": 29702.9702970297,
+   "ring_profit": 9702.9702970297,
+   "ring_share_of_pool": 0.99009900990099,
+   "honest_recover_share_of_loss": 0.01485148514851485
+  }
+ ],
+ "insurance_break_even_share_paid": 0.02,
+ "per_identity": [
+  {
+   "identities_per_honest_identity": 0.1,
+   "ring_share_of_revenue": 0.09090909090909091
+  },
+  {
+   "identities_per_honest_identity": 1.0,
+   "ring_share_of_revenue": 0.5
+  },
+  {
+   "identities_per_honest_identity": 10.0,
+   "ring_share_of_revenue": 0.9090909090909091
+  }
+ ],
+ "forfeit_as_share_of_amount_due": {
+  "simulated": 0.030592851901309108,
+  "predicted": 0.03059579439252337,
+  "as_first_predicted": 0.03434579439252337
+ }
+}

@@ -1,0 +1,256 @@
+{
+ "provenance": {
+  "utc": "2026-11-20T06:25:19+00:00",
+  "commit": "c96370a950b7a669f359ae48d8ea516d9544dde8",
+  "commit_short": "c96370a",
+  "dirty": false,
+  "dirty_paths": "not recorded (stamp passed through the environment)",
+  "branch": null,
+  "python": "3.12.3",
+  "host": "devbox.europe-west4-a.c.dev-compute-d7766860.internal"
+ },
+ "parameters": {
+  "evidence": 1000.0,
+  "limit": 1088.8888888888887,
+  "stranger_limit": 108.88888888888889,
+  "growth": 1.0888888888888888,
+  "places": 5,
+  "payers": 100000,
+  "seeds": 5,
+  "windows": 30,
+  "belief": {
+   "risk_tolerance": 0.1,
+   "floor": 100.0,
+   "tail_index": 1.0,
+   "shock_rate": 0.02
+  }
+ },
+ "exposure": {
+  "A. each payee accepts the whole limit": [
+   {
+    "payees": 1,
+    "per_payee": 1088.8888888888887,
+    "total_owed": 1088.8888888888887,
+    "over_limit": 1.0,
+    "default_rate": 0.099692,
+    "standard_error": 0.00021895022265344902,
+    "predicted": 0.09999999999999987,
+    "attacker_takes": 1.0
+   },
+   {
+    "payees": 2,
+    "per_payee": 1088.8888888888887,
+    "total_owed": 2177.7777777777774,
+    "over_limit": 2.0,
+    "default_rate": 0.5499879999999999,
+    "standard_error": 0.0002331248592492864,
+    "predicted": 0.5499999999999999,
+    "attacker_takes": 2.0
+   },
+   {
+    "payees": 5,
+    "per_payee": 1088.8888888888887,
+    "total_owed": 5444.444444444443,
+    "over_limit": 5.0,
+    "default_rate": 0.8192619999999999,
+    "standard_error": 0.0005115419826368086,
+    "predicted": 0.82,
+    "attacker_takes": 5.0
+   },
+   {
+    "payees": 10,
+    "per_payee": 1088.8888888888887,
+    "total_owed": 10888.888888888887,
+    "over_limit": 10.0,
+    "default_rate": 0.9092559999999998,
+    "standard_error": 0.0004373245934086144,
+    "predicted": 0.91,
+    "attacker_takes": 10.0
+   }
+  ],
+  "B. each accepts the limit / 5": [
+   {
+    "payees": 1,
+    "per_payee": 217.77777777777774,
+    "total_owed": 217.77777777777774,
+    "over_limit": 0.2,
+    "default_rate": 0.01975,
+    "standard_error": 0.00012499599993600854,
+    "predicted": 0.020000000000000018,
+    "attacker_takes": 0.2
+   },
+   {
+    "payees": 2,
+    "per_payee": 217.77777777777774,
+    "total_owed": 435.5555555555555,
+    "over_limit": 0.4,
+    "default_rate": 0.01975,
+    "standard_error": 0.00012499599993600854,
+    "predicted": 0.020000000000000018,
+    "attacker_takes": 0.4
+   },
+   {
+    "payees": 4,
+    "per_payee": 217.77777777777774,
+    "total_owed": 871.111111111111,
+    "over_limit": 0.8,
+    "default_rate": 0.01975,
+    "standard_error": 0.00012499599993600854,
+    "predicted": 0.020000000000000018,
+    "attacker_takes": 0.8
+   },
+   {
+    "payees": 5,
+    "per_payee": 217.77777777777774,
+    "total_owed": 1088.8888888888887,
+    "over_limit": 1.0,
+    "default_rate": 0.099692,
+    "standard_error": 0.00021895022265344902,
+    "predicted": 0.09999999999999987,
+    "attacker_takes": 1.0
+   },
+   {
+    "payees": 10,
+    "per_payee": 217.77777777777774,
+    "total_owed": 2177.7777777777774,
+    "over_limit": 2.0,
+    "default_rate": 0.5499879999999999,
+    "standard_error": 0.0002331248592492864,
+    "predicted": 0.5499999999999999,
+    "attacker_takes": 2.0
+   }
+  ],
+  "C. hubs, each allowing the whole limit in all": [
+   {
+    "payees": 1,
+    "per_payee": 1088.8888888888887,
+    "total_owed": 1088.8888888888887,
+    "over_limit": 1.0,
+    "default_rate": 0.099692,
+    "standard_error": 0.00021895022265344902,
+    "predicted": 0.09999999999999987,
+    "attacker_takes": 1.0
+   },
+   {
+    "payees": 2,
+    "per_payee": 1088.8888888888887,
+    "total_owed": 2177.7777777777774,
+    "over_limit": 2.0,
+    "default_rate": 0.5499879999999999,
+    "standard_error": 0.0002331248592492864,
+    "predicted": 0.5499999999999999,
+    "attacker_takes": 2.0
+   },
+   {
+    "payees": 5,
+    "per_payee": 1088.8888888888887,
+    "total_owed": 5444.444444444443,
+    "over_limit": 5.0,
+    "default_rate": 0.8192619999999999,
+    "standard_error": 0.0005115419826368086,
+    "predicted": 0.82,
+    "attacker_takes": 5.0
+   }
+  ]
+ },
+ "stale_log": {
+  "1 payees, log stale": 1.2000000000000002,
+  "5 payees, log stale": 2.0,
+  "5 payees, log fresh": 1.0,
+  "5 payees, limit / 6 (the lender counted as a place)": 0.9999999999999999
+ },
+ "growth": [
+  {
+   "case": "default reading, 1 payee",
+   "limit_at_start": 108.88888888888889,
+   "limit_after": 1401.1691083843682,
+   "growth_per_window": 1.0888888888888888,
+   "first_step": 1.0888888888888888
+  },
+  {
+   "case": "default reading, 5 of 5 payees",
+   "limit_at_start": 108.88888888888889,
+   "limit_after": 108.88888888888889,
+   "growth_per_window": 1.0,
+   "first_step": 1.0
+  },
+  {
+   "case": "concurrent, 5 of 5, payees trust each other fully",
+   "limit_at_start": 108.88888888888889,
+   "limit_after": 1401.1691083843684,
+   "growth_per_window": 1.0888888888888888,
+   "first_step": 1.0888888888888888
+  },
+  {
+   "case": "concurrent, 4 of 5, full trust",
+   "limit_at_start": 108.88888888888889,
+   "limit_after": 108.88888888888889,
+   "growth_per_window": 1.0,
+   "first_step": 1.0
+  },
+  {
+   "case": "concurrent, 5 of 5, trust 0.9",
+   "limit_at_start": 108.88888888888889,
+   "limit_after": 126.07509790044648,
+   "growth_per_window": 1.0000046123321802,
+   "first_step": 1.0565901034164515
+  },
+  {
+   "case": "concurrent, 5 of 5, trust 0.5",
+   "limit_at_start": 108.88888888888889,
+   "limit_after": 109.48148148148148,
+   "growth_per_window": 1.0,
+   "first_step": 1.005128205128205
+  },
+  {
+   "case": "concurrent, 2 of 2, trust 0.9",
+   "limit_at_start": 108.88888888888889,
+   "limit_after": 188.432819144684,
+   "growth_per_window": 1.0013727299235513,
+   "first_step": 1.079295154185022
+  },
+  {
+   "case": "one hub, spent at 5 payees",
+   "limit_at_start": 108.88888888888889,
+   "limit_after": 1401.1691083843684,
+   "growth_per_window": 1.0888888888888888,
+   "first_step": 1.0888888888888888
+  },
+  {
+   "case": "one hub, spent at 2 payees",
+   "limit_at_start": 108.88888888888889,
+   "limit_after": 1401.1691083843682,
+   "growth_per_window": 1.0888888888888888,
+   "first_step": 1.0888888888888888
+  }
+ ],
+ "washing": {
+  "0.0": {
+   "default reading, 1 confederate": 1.0,
+   "concurrent, 1 confederates sharing the amount": 1.0,
+   "concurrent, 2 confederates sharing the amount": 1.0,
+   "concurrent, 5 confederates sharing the amount": 1.0,
+   "concurrent, 2 confederates, the amount each": 1.0,
+   "concurrent, 5 confederates, the amount each": 1.0,
+   "default reading, 5 confederates, the amount each": 1.0
+  },
+  "0.5": {
+   "default reading, 1 confederate": 1.081341129665453,
+   "concurrent, 1 confederates sharing the amount": 1.081341129665453,
+   "concurrent, 2 confederates sharing the amount": 1.0610483470943721,
+   "concurrent, 5 confederates sharing the amount": 1.056705619547678,
+   "concurrent, 2 confederates, the amount each": 1.0610165807445904,
+   "concurrent, 5 confederates, the amount each": 1.0565031795061273,
+   "default reading, 5 confederates, the amount each": 3.527192699403804
+  },
+  "0.9": {
+   "default reading, 1 confederate": 1.7309116611078725,
+   "concurrent, 1 confederates sharing the amount": 1.7309116611078725,
+   "concurrent, 2 confederates sharing the amount": 1.4037390209352105,
+   "concurrent, 5 confederates sharing the amount": 1.2356369486024934,
+   "concurrent, 2 confederates, the amount each": 1.4032673964758906,
+   "concurrent, 5 confederates, the amount each": 1.2355324958105975,
+   "default reading, 5 confederates, the amount each": 8140.109832949927
+  }
+ }
+}

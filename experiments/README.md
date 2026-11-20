@@ -37,6 +37,8 @@ contracts changed. `Economy()` still gives those rules so the experiments stay r
 | Would a lender let the guarantor go? | `guarantor_exit/` | At what unsecured rate do both lender and borrower prefer to graduate? | run 2026-11-19 |
 | A patient ring | `patient_ring/` | How patient must a ring be to rob the graduated-credit rule, and what setting is safe? | run 2026-11-19 |
 | A borrower who chooses | `strategic_borrower/` | Does the threshold model follow from a borrower who weighs repaying against leaving? | run 2026-11-19 |
+| Offline | `offline/` | How much should a payee accept from a payer it cannot check, what does being disconnected cost, and can credit grow there? | run 2026-11-20 |
+| What should the fees pay for? | `fee_use/` | Seven uses of the fee revenue: what each does to the cost of faking a record, the cost of honest use, and what a ring can take | run 2026-11-20 |
 | What a default really costs | `standing_value/` | Dividends, access to credit and the option to start again: the full account of a default on a ladder | run 2026-11-19 |
 
 Each README states its predictions (written before the first run) and then the outcome.

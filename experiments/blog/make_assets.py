@@ -454,6 +454,43 @@ def numbers(keeper, peaks):
     n["graduation_cycles_2pct"] = str(pr["results"]["0.02"]["graduation_cycles"])
     n["graduation_cycles_zero"] = str(pr["results"]["0.0"]["graduation_cycles"])
 
+    # offline: accepting a payment that cannot be checked
+    off = results("offline")
+    arm = {name[0]: {r["payees"]: r for r in rows} for name, rows in off["exposure"].items()}
+    n["off_places"] = str(off["parameters"]["places"])
+    n["off_stranger_limit"] = fmt(off["parameters"]["stranger_limit"], 1)
+    n["off_default_2"], n["off_default_5"], n["off_default_10"] = (pct(arm["A"][k]["default_rate"]) for k in (2, 5, 10))
+    n["off_split_default_few"] = pct(arm["B"][4]["default_rate"])
+    n["off_split_default_all"] = pct(arm["B"][5]["default_rate"])
+    n["off_split_default_double"] = pct(arm["B"][10]["default_rate"])
+    n["off_stale_total"] = fmt(off["stale_log"]["5 payees, log stale"], 1)
+    growth = {g["case"]: g for g in off["growth"]}
+    n["off_windows"] = str(off["parameters"]["windows"])
+    n["off_growth_default"] = fmt(growth["default reading, 5 of 5 payees"]["limit_after"], 1)
+    n["off_growth_concurrent"] = f'{growth["concurrent, 5 of 5, payees trust each other fully"]["limit_after"]:,.0f}'
+    n["off_growth_hub"] = f'{growth["one hub, spent at 2 payees"]["limit_after"]:,.0f}'
+    capped = growth["concurrent, 5 of 5, trust 0.9"]
+    n["off_cap_09"] = fmt(capped["limit_after"], 0)
+    n["off_cap_09_multiple"] = fmt(capped["limit_after"] / capped["limit_at_start"])
+    n["off_cap_05"] = fmt(growth["concurrent, 5 of 5, trust 0.5"]["limit_after"], 1)
+    wash = off["washing"]["0.9"]
+    n["off_wash_default"] = fmt(wash["default reading, 1 confederate"])
+    n["off_wash_concurrent"] = fmt(wash["concurrent, 2 confederates sharing the amount"])
+
+    # what the fees could pay for
+    fu = results("fee_use")
+    rules = {name.split(".")[0] + ("b" if "someone else" in name else ""): r for name, r in fu["rules"].items()}
+    n["fu_rebate"] = pct(fu["parameters"]["dividend_share"], 1)
+    n["fu_wash_dividend"], n["fu_wash_burn"] = pct(rules["1"]["wash_cost"], 3), pct(rules["2"]["wash_cost"])
+    n["fu_safe_dividend"], n["fu_safe_burn"] = pct(rules["1"]["safe_trust"], 1), pct(rules["2"]["safe_trust"], 1)
+    n["fu_wash_work"] = pct(rules["5"]["wash_cost"], 2)
+    ring = [r for r in fu["insurance"] if r["fake_ratio"] == 10.0][0]
+    n["fu_insurance_ring_share"] = pct(ring["ring_share_of_pool"])
+    n["fu_insurance_recover"] = pct(ring["honest_recover_share_of_loss"], 1)
+    n["fu_insurance_recover_before"] = pct(fu["insurance"][0]["honest_recover_share_of_loss"])
+    n["fu_identity_share"] = pct([r for r in fu["per_identity"] if r["identities_per_honest_identity"] == 10.0][0]["ring_share_of_revenue"])
+    n["fu_forfeit"] = pct(fu["forfeit_as_share_of_amount_due"]["simulated"], 1)
+
     # the ladder's bounds (i = r = 5%, surplus 3%; risk 10%, shocks 2%, tail index 1)
     n["k_screen"] = fmt(ladder.screening_growth_factor(0.10, 1.0, 0.02), 3)
     n["k_stay"] = fmt(ladder.incentive_growth_factor(0.05, 0.03, 0.05), 3)
@@ -476,8 +513,8 @@ def main():
              f"# Source commit {stamp['commit_short']} (dirty: {stamp['dirty']}), {stamp['utc']}.",
              f"commit: \"{stamp['commit_short']}\""]
     lines += [f"{key}: \"{value}\"" for key, value in numbers(keeper, peaks).items()]
-    # Tallied by hand on 2026-11-19 from the outcome tables in the eighteen experiment READMEs.
-    lines += ['predictions_total: "110"', 'predictions_held: "80"', 'predictions_partly: "21"', 'predictions_wrong: "9"']
+    # Tallied by hand on 2026-11-20 from the outcome tables in the twenty experiment READMEs.
+    lines += ['predictions_total: "126"', 'predictions_held: "93"', 'predictions_partly: "22"', 'predictions_wrong: "11"']
     (out / "rain.yml").write_text("\n".join(lines) + "\n")
     print("\n".join(lines))
 

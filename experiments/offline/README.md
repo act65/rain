@@ -90,3 +90,43 @@ many payees a payer can reach between syncs) is not modelled, and prediction 2 s
 costs. Notes are not transferable. Secure hardware, which could enforce a spending cap on the payer's device,
 is not assumed. The hub is trusted by its market to keep the running total; what it earns and whether it
 answers for the notes (a guarantor, as in `vouching/`) is not modelled.
+
+## Outcome (2026-11-20)
+
+Numbers are in `results/SUMMARY.md`. Both controls behaved: payees who each accept the whole limit are
+over-exposed in proportion to their number, and with one payee every rule gives a 10% default rate (9.97%).
+
+| prediction | outcome |
+|---|---|
+| 1. control: default rate 10%, 55%, 82%, 91% for 1, 2, 5, 10 payees; an attacker takes `n L` | Held: 9.97%, 55.00%, 81.93%, 90.93%, and 1, 2, 5, 10 limits. |
+| 2. dividing by 5: 2% up to four payees, 10% at five, 55% at ten | Held: 1.98%, 9.97%, 55.00%. An attacker takes a fifth of the limit per payee. |
+| 3. one hub: 10% and one limit; `k` hubs as arm A | Held. |
+| 4. a stale log is one more place: `2 L` in all at `n = m` | Held: 2.00 limits with five payees, 1.20 with one. Payees with a fresh log refuse a delinquent payer, and the total is 1.00. If lender and payees all divide by six the total is again one limit (arithmetic; the lender's smaller loan was not simulated). |
+| 5. default reading: no growth offline with two or more payees | Held: 108.9 after 30 windows. |
+| 6. concurrent reading, full trust: 1.089 a window at five of five payees, none at four of five | Held: 1,401 after 30 windows (I wrote 1,404; the arithmetic was mine), and 108.9 at four of five. |
+| 7. growth between 1.02 and 1.089 a window at trust 0.9, below 1.01 at trust 0.5; a hub gives 1.089 | **Wrong at 0.9 in kind.** The first step is 1.057, and then growth stops: the limit settles at 126 (1.16 times a stranger's) and stays there. At trust 0.5 it settles at 109.5. Partial trust between payees does not slow the climb, it caps it. This is the collusion result again: a total five payees vouch for at 0.9 each is 59% credible, and no amount of repetition by the same five makes it more so. With two payees at 0.9 the cap is 188. Through one hub it is 1.089 a window, at two payees or five, as predicted. |
+| 8. the concurrent reading gives a ring nothing | Held: 1.00, 1.06 and 1.40 times a stranger's offer with two confederates (1.24 with five), against 1.00, 1.08 and 1.73 for one confederate under the default reading. The default reading with five confederates treated as independent gives 3.5 and 8,140: the many-confederate attack of `collusion/`, which the concurrent reading does not suffer because it treats all counterparties as one group. |
+
+What this shows:
+
+- **A double spend is a default, and the limit that contains it is a credit limit on the whole payer.** The
+  belief was always about everything a person owes at once. On a chain one lender sees it all. Offline each
+  payee sees its own notes, so the exposure is the limit times the number of places that cannot see each other.
+- **Dividing the limit by the number of places restores the 10%.** The price of being available while
+  partitioned is a factor `m` in what any one payee will accept, and an underestimate of `m` by half costs a
+  55% default rate.
+- **A stale log is another place.** A payee who has not synced is exposed to whatever the payer did on the
+  chain since.
+- **Consistency inside the partition removes the factor.** A camp is cut off from the internet, not from
+  itself. One hub that every payee in a market asks, over a local network, sees the whole payer: the limit is
+  not divided, and an attacker takes one limit. The double spend that remains is between hubs.
+- **Offline, standing is spent and hardly built**, unless notes owed at once are read as their total
+  (`weigh(..., concurrent=True)`) by payees who trust each other fully, or who share a hub. Under the default
+  reading a payer whose limit is divided never shows more than they already had. With the concurrent reading
+  and five payees who trust each other at 0.9, credit stops at 1.16 times a stranger's.
+- **The concurrent reading is safe to adopt**: it is never more confident than the default reading about a
+  single amount, and splitting a wash among confederates is believed less than one wash of the same total.
+
+What it does not show: how a payee should estimate `m`; what a hub earns or risks; what happens when notes are
+passed on. The recommendation for a market without connection is a hub that answers for what it allows, which
+is the guarantor of `vouching/` and has not been built for notes.
