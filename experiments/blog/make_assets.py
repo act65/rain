@@ -642,6 +642,17 @@ def numbers(keeper, peaks):
     n["off_wash_default"] = fmt(wash["default reading, 1 confederate"])
     n["off_wash_concurrent"] = fmt(wash["concurrent, 2 confederates sharing the amount"])
 
+    # offline: an attacker who chooses how many shops to visit
+    race = results("offline_race")
+    n["race_control"] = fmt(race["nothing_shared"]["1000"]["guess"], 0)
+    n["race_per_shop"] = pct(race["nothing_shared"]["1000"]["per_shop_when_divided_by_market"], 1)
+    n["race_gossip_1000"] = fmt(race["gossip"]["1.0"]["1000"]["mean"], 1)
+    n["race_gossip_10000"] = fmt(race["gossip"]["1.0"]["10000"]["mean"], 1)
+    n["race_chain"] = fmt(race["chain"]["d=5, rho=0.2"]["1000"]["mean"], 1)
+    n["race_helpers"] = fmt(race["helpers"]["mean"], 0)
+    n["race_fresh_cap"] = fmt(race["freshness"]["cap"], 1)
+    n["race_fresh_available"] = pct(race["freshness"]["available"])
+
     # what the fees could pay for
     fu = results("fee_use")
     rules = {name.split(".")[0] + ("b" if "someone else" in name else ""): r for name, r in fu["rules"].items()}
@@ -687,8 +698,8 @@ def main():
              f"commit: \"{stamp['commit_short']}\""]
     n = numbers(keeper, peaks)
     lines += [f"{key}: \"{value}\"" for key, value in n.items()]
-    # Tallied by hand on 2026-11-20 from the outcome tables in the twenty experiment READMEs.
-    tally = dict(predictions_total="126", predictions_held="93", predictions_partly="22", predictions_wrong="11", experiments_count="20")
+    # Tallied by hand on 2026-11-20 from the outcome tables in the twenty-one experiment READMEs.
+    tally = dict(predictions_total="132", predictions_held="99", predictions_partly="22", predictions_wrong="11", experiments_count="21")
     lines += [f'{key}: "{value}"' for key, value in tally.items()]
     (out / "rain.yml").write_text("\n".join(lines) + "\n")
     render_note({**n, **tally, "commit": stamp["commit_short"]}, out)

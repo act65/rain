@@ -38,6 +38,7 @@ contracts changed. `Economy()` still gives those rules so the experiments stay r
 | A patient ring | `patient_ring/` | How patient must a ring be to rob the graduated-credit rule, and what setting is safe? | run 2026-11-19 |
 | A borrower who chooses | `strategic_borrower/` | Does the threshold model follow from a borrower who weighs repaying against leaving? | run 2026-11-19 |
 | Offline | `offline/` | How much should a payee accept from a payer it cannot check, what does being disconnected cost, and can credit grow there? | run 2026-11-20 |
+| Offline: racing the news | `offline_race/` | What does a double spender take when they choose how many shops to visit, and what must shops share to bound it? | run 2026-11-20 |
 | What should the fees pay for? | `fee_use/` | Seven uses of the fee revenue: what each does to the cost of faking a record, the cost of honest use, and what a ring can take | run 2026-11-20 |
 | What a default really costs | `standing_value/` | Dividends, access to credit and the option to start again: the full account of a default on a ladder | run 2026-11-19 |
 

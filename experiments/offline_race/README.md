@@ -72,3 +72,37 @@ honest relays. Carriers in arm D are not modelled as a market: `d` is given, and
 is not examined. A shop's sync returns the chain's whole view at that moment. The payer is assumed to pay
 nothing, so every note is a loss; whether the take is worth the payer's standing is `standing_value/`'s
 question.
+
+## Outcome (2026-11-20)
+
+Numbers are in `results/SUMMARY.md`. The control behaved: with nothing shared the take is in proportion to the
+market.
+
+| prediction | outcome |
+|---|---|
+| 1. control: `M / m` limits, 20 and 200 | Held. |
+| 2. dividing by the market: one limit; each shop accepts 1% and 0.1% of it | Held. |
+| 3. gossip: the take grows with the logarithm of the market; 1.5 to 4 limits at `g` = 1 and `M` = 1,000; less than 2 more from 100 to 10,000; more than 5 at `g` = 0.1 | Held: 2.34 limits; 1.65 to 2.94 across a hundredfold larger market; 11.9 at `g` = 0.1. The rough formula is within a quarter of the simulation at `M` = 1,000 for every `g`. |
+| 4. the chain: `1 + (d + 1 / (exp(rho) - 1)) / m`, whatever the market's size: 1.32, 2.90, 8.90 | Held: 1.32, 2.91 and 9.06 at `M` = 1,000 (1.32, 2.91, 8.92 at 100). |
+| 5. freshness: never above 2.4 limits; shops willing to deal 33% of the time | Held: the largest take in any run was 1.80, the mean 1.42. |
+| 6. ten helpers: 20.9 limits | Held: 21.1. |
+
+What this shows:
+
+- **A double spender's take is set by the shops, not the payer.** A signed note can be copied to anyone who
+  will take it. With nothing shared, the take is the per-shop amount times the size of the market.
+- **The parameter is speed: how many shops the attacker reaches before news of their notes does.** Through
+  the chain that number does not depend on the size of the market. It is the carriers' delay plus the time
+  between a shop's syncs, measured in attacker's visits. An attacker with helpers is that much faster, and
+  the take rises in proportion.
+- **So syncing is worth paying for, and what the payment buys is a smaller take.** Halving the delay and the
+  time between syncs roughly halves what an attacker gets beyond the first limit. The note script already
+  gives shops a reason to hurry: notes are paid in the order they are presented.
+- **Gossip between shops needs no chain at all** and loses only a logarithm of the market's size. It is local
+  arbitration between copies: two shops that compare notes can see an overspend that neither sees alone.
+- **Refusing to deal on old information is a dial between available and consistent.** It caps the take for
+  any attacker, at the cost of shops that will not deal until they have synced.
+
+What it does not show: what reward produces what delay (there is no market for carrying in the model); shops
+that lie when they gossip; an attacker who knows which shops have heard. The comparison that matters for the
+payer, whether a take of a few limits is worth their standing, is not made here.

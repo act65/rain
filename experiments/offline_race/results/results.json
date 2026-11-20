@@ -1,0 +1,169 @@
+{
+ "provenance": {
+  "utc": "2026-11-20T10:31:22+00:00",
+  "commit": "e11d5088136cc574fb02ab7c26222f65d4ad8ec4",
+  "commit_short": "e11d508",
+  "dirty": false,
+  "dirty_paths": "not recorded (stamp passed through the environment)",
+  "branch": null,
+  "python": "3.12.3",
+  "host": "devbox.europe-west4-a.c.dev-compute-d7766860.internal"
+ },
+ "parameters": {
+  "guess": 5,
+  "seeds": 20
+ },
+ "nothing_shared": {
+  "100": {
+   "guess": 20.0,
+   "divide_by_market": 1.0,
+   "per_shop_when_divided_by_market": 0.01
+  },
+  "1000": {
+   "guess": 200.0,
+   "divide_by_market": 1.0,
+   "per_shop_when_divided_by_market": 0.001
+  }
+ },
+ "gossip": {
+  "0.1": {
+   "100": {
+    "mean": 7.530000000000001,
+    "standard_error": 0.1617502948829981,
+    "largest": 9.0,
+    "rough_prediction": 10.210340371976184
+   },
+   "1000": {
+    "mean": 11.879999999999999,
+    "standard_error": 0.1755592567527527,
+    "largest": 12.8,
+    "rough_prediction": 14.815510557964274
+   },
+   "10000": {
+    "mean": 16.67,
+    "standard_error": 0.18596830516600354,
+    "largest": 17.8,
+    "rough_prediction": 19.420680743952367
+   }
+  },
+  "0.3": {
+   "100": {
+    "mean": 3.4200000000000004,
+    "standard_error": 0.07663996483902061,
+    "largest": 4.0,
+    "rough_prediction": 4.0701134573253945
+   },
+   "1000": {
+    "mean": 5.1899999999999995,
+    "standard_error": 0.07030010855722697,
+    "largest": 5.800000000000001,
+    "rough_prediction": 5.605170185988092
+   },
+   "10000": {
+    "mean": 6.909999999999999,
+    "standard_error": 0.09230954788958153,
+    "largest": 7.6000000000000005,
+    "rough_prediction": 7.140226914650789
+   }
+  },
+  "1.0": {
+   "100": {
+    "mean": 1.65,
+    "standard_error": 0.038044295512634094,
+    "largest": 2.0,
+    "rough_prediction": 1.9210340371976184
+   },
+   "1000": {
+    "mean": 2.3400000000000003,
+    "standard_error": 0.038661826678330444,
+    "largest": 2.6,
+    "rough_prediction": 2.3815510557964275
+   },
+   "10000": {
+    "mean": 2.94,
+    "standard_error": 0.05047146145152358,
+    "largest": 3.6,
+    "rough_prediction": 2.842068074395237
+   }
+  },
+  "3.0": {
+   "100": {
+    "mean": 1.06,
+    "standard_error": 0.021026299321513894,
+    "largest": 1.2000000000000002,
+    "rough_prediction": 1.3070113457325394
+   },
+   "1000": {
+    "mean": 1.31,
+    "standard_error": 0.02282657730758046,
+    "largest": 1.4000000000000001,
+    "rough_prediction": 1.460517018598809
+   },
+   "10000": {
+    "mean": 1.5900000000000003,
+    "standard_error": 0.01762175688714021,
+    "largest": 1.8,
+    "rough_prediction": 1.6140226914650788
+   }
+  }
+ },
+ "chain": {
+  "d=1, rho=1.0": {
+   "100": {
+    "mean": 1.32,
+    "standard_error": 0.030435436410107274,
+    "largest": 1.6,
+    "predicted": 1.3163953413738652
+   },
+   "1000": {
+    "mean": 1.32,
+    "standard_error": 0.030435436410107274,
+    "largest": 1.6,
+    "predicted": 1.3163953413738652
+   }
+  },
+  "d=5, rho=0.2": {
+   "100": {
+    "mean": 2.9099999999999997,
+    "standard_error": 0.06403124237432849,
+    "largest": 3.6,
+    "predicted": 2.903331113225399
+   },
+   "1000": {
+    "mean": 2.9099999999999997,
+    "standard_error": 0.06403124237432849,
+    "largest": 3.6,
+    "predicted": 2.903331113225399
+   }
+  },
+  "d=20, rho=0.05": {
+   "100": {
+    "mean": 8.92,
+    "standard_error": 0.10503132364855935,
+    "largest": 9.600000000000001,
+    "predicted": 8.900833298613172
+   },
+   "1000": {
+    "mean": 9.059999999999999,
+    "standard_error": 0.11154418525032089,
+    "largest": 9.8,
+    "predicted": 8.900833298613172
+   }
+  }
+ },
+ "freshness": {
+  "fresh_within": 2.0,
+  "cap": 2.4,
+  "available": 0.3296799539643607,
+  "mean": 1.4200000000000002,
+  "standard_error": 0.04078183290065371,
+  "largest": 1.8
+ },
+ "helpers": {
+  "helpers": 10,
+  "predicted": 20.90033333111115,
+  "mean": 21.12,
+  "standard_error": 0.2282196541192624,
+  "largest": 23.200000000000003
+ }
+}

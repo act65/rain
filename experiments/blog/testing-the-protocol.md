@@ -187,6 +187,14 @@ A shop accepting a note is a lender, so it reads the payer's record and has a li
 - **Offline, standing is spent and hardly built.** A stranger's limit is {{ n.off_stranger_limit }}. Divided among five shops, no note is as large as what the payer has already shown, and after {{ n.off_windows }} rounds the limit is still {{ n.off_growth_default }}. Reading notes that were owed at once as their total fixes this where shops trust each other fully or share a hub: the limit reaches {{ n.off_growth_concurrent }}, the same climb as a ladder of loans. Where they trust each other at 90% it stops at {{ n.off_cap_09 }}. We predicted a slower climb. It is a ceiling, for the reason an extraordinary record needs extraordinary trust.
 - **Reading totals gives a ring nothing.** Splitting a wash among confederates costs the same fees and is believed less: {{ n.off_wash_concurrent }} times a stranger's offer, against {{ n.off_wash_default }} for one confederate, from a bank that trusts strangers at 90%.
 
+**How fast can a note be copied?** Dividing the limit bounds the take only if the shops guess the number of places correctly. An attacker who chooses how many shops to visit, in a market of 1,000 where shops guess five, takes {{ n.race_control }} limits. A signed note can be copied to anyone who will take it, so nothing on the payer's side prevents this, and the bound has to come from what the shops share.
+
+- Dividing by every shop in the market gives one limit exactly. Each shop then accepts {{ n.race_per_shop }} of it.
+- If shops swap what they know with each other, once per visit the attacker makes, the take is {{ n.race_gossip_1000 }} limits, and {{ n.race_gossip_10000 }} in a market ten times larger. It grows with the logarithm of the market.
+- If notes are carried to the chain and shops sync from it, the take does not depend on the market's size. It is the number of shops the attacker reaches while the news gets to the chain and back: {{ n.race_chain }} limits when carrying a note takes five visits and a shop syncs every five.
+- Speed is the parameter. An attacker with ten helpers is ten times faster and takes {{ n.race_helpers }} limits. What a reward for carrying notes buys is a shorter delay.
+- Shops that refuse everyone while their own sync is more than two visits old cap the take at {{ n.race_fresh_cap }} limits whatever the attacker does, and are willing to deal {{ n.race_fresh_available }} of the time. That setting is a dial between staying available and staying consistent.
+
 The design this points to for a market without a connection is a hub that answers for the notes it allows, which is the guarantor above in another role. It has not been built.
 
 ## What the fees should pay for

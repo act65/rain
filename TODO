@@ -27,3 +27,6 @@ Open after the offline and fee-use experiments (2026-11-20):
   function of the log (`rain.reputation`), so make its updates challengeable (post, wait, anyone who recomputes a
   different result disputes) instead of trusted. Open: what voting weight is (reputation costs fees and fades, so
   it is a candidate, but it favours whoever transacts most), and how a DAO decides one person, one identity.
+- offline, after `offline_race/`: a market for carrying notes (what reward buys what delay; a tip in
+  OfflineNoteScript); a fraud proof a shop can check with no chain (a chain-signed allowance the payer carries,
+  so notes totalling more than it prove the overspend); gossip between shops in the client.
