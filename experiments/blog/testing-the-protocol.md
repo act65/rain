@@ -139,7 +139,7 @@ Two hundred agents, with loan sizes spread over two orders of magnitude, half of
 
 ## Aim 6: the record, and where a newcomer starts
 
-The derivations behind this section are in [Reputation as a belief]({{ site.baseurl }}/reputation-as-belief/). Here are the tests.
+Here are the tests.
 
 **Faking a record.** Two colluding accounts pass a loan back and forth. Each round costs {{ n.wash_cost }} of the amount: the fee, less the part that returns as dividends. A lender who reads the whole log as evidence is robbed without limit. After one wash of 10,000 it accepts {{ n.naive_bank_due }} and loses it. The control (a lender that believes everything must lose) failed as it should.
 
